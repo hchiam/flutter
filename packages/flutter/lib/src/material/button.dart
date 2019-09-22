@@ -2,360 +2,487 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-import 'colors.dart';
+import 'button_theme.dart';
 import 'constants.dart';
-import 'debug.dart';
-import 'flat_button.dart';
 import 'ink_well.dart';
 import 'material.dart';
-import 'raised_button.dart';
+import 'material_state.dart';
 import 'theme.dart';
+import 'theme_data.dart';
 
-/// Whether a button should use the accent color for its text.
+/// Creates a button based on [Semantics], [Material], and [InkWell]
+/// widgets.
 ///
-/// See also:
+/// This class does not use the current [Theme] or [ButtonTheme] to
+/// compute default values for unspecified parameters. It's intended to
+/// be used for custom Material buttons that optionally incorporate defaults
+/// from the themes or from app-specific sources.
 ///
-///  * [ButtonTheme], which uses this enum to define the [ButtonTheme.textTheme].
-///  * [RaisedButton], which styles itself based on the ambient [ButtonTheme].
-///  * [FlatButton], which styles itself based on the ambient [ButtonTheme].
-enum ButtonTextTheme {
-  /// The button should use the normal color (e.g., black or white depending on
-  /// the [ThemeData.brightness]) for its text.
-  normal,
-
-  /// The button should use the accent color (e.g., [ThemeData.accentColor]) for
-  /// its text.
-  accent,
-}
-
-/// Defines the button color used by a widget subtree.
-///
-/// See also:
-///
-///  * [ButtonTextTheme], which is used by [textTheme].
-///  * [RaisedButton], which styles itself based on the ambient [ButtonTheme].
-///  * [FlatButton], which styles itself based on the ambient [ButtonTheme].
-class ButtonTheme extends InheritedWidget {
-  /// Creates a button theme.
+/// [RaisedButton] and [FlatButton] configure a [RawMaterialButton] based
+/// on the current [Theme] and [ButtonTheme].
+class RawMaterialButton extends StatefulWidget {
+  /// Create a button based on [Semantics], [Material], and [InkWell] widgets.
   ///
-  /// The child argument is required.
-  const ButtonTheme({
+  /// The [shape], [elevation], [focusElevation], [hoverElevation],
+  /// [highlightElevation], [disabledElevation], [padding], [constraints],
+  /// [autofocus], and [clipBehavior] arguments must not be null. Additionally,
+  /// [elevation], [focusElevation], [hoverElevation], [highlightElevation], and
+  /// [disabledElevation] must be non-negative.
+  const RawMaterialButton({
     Key key,
-    this.textTheme: ButtonTextTheme.normal,
-    this.minWidth: 88.0,
-    this.height: 36.0,
-    this.padding: const EdgeInsets.symmetric(horizontal: 16.0),
-    Widget child
-  }) : super(key: key, child: child);
-
-  /// Creates a button theme that is appropriate for button bars, as used in
-  /// dialog footers and in the headers of data tables.
-  ///
-  /// This theme is denser, with a smaller [minWidth] and [padding], than the
-  /// default theme. Also, this theme uses [ButtonTextTheme.accent] rather than
-  /// [ButtonTextTheme.normal].
-  ///
-  /// For best effect, the label of the button at the edge of the container
-  /// should have text that ends up wider than 64.0 pixels. This ensures that
-  /// the alignment of the text matches the alignment of the edge of the
-  /// container.
-  ///
-  /// For example, buttons at the bottom of [Dialog] or [Card] widgets use this
-  /// button theme.
-  const ButtonTheme.bar({
-    Key key,
-    this.textTheme: ButtonTextTheme.accent,
-    this.minWidth: 64.0,
-    this.height: 36.0,
-    this.padding: const EdgeInsets.symmetric(horizontal: 8.0),
-    Widget child
-  }) : super(key: key, child: child);
-
-  /// The button color that this subtree should use.
-  final ButtonTextTheme textTheme;
-
-  /// The smallest horizontal extent that the button will occupy.
-  ///
-  /// Defaults to 88.0 logical pixels.
-  final double minWidth;
-
-  /// The vertical extent of the button.
-  ///
-  /// Defaults to 36.0 logical pixels.
-  final double height;
-
-  /// The amount of space to surround the child inside the bounds of the button.
-  ///
-  /// Defaults to 16.0 pixels of horizontal padding.
-  final EdgeInsetsGeometry padding;
-
-  /// The closest instance of this class that encloses the given context.
-  ///
-  /// Typical usage is as follows:
-  ///
-  /// ```dart
-  /// ButtonTheme theme = ButtonTheme.of(context);
-  /// ```
-  static ButtonTheme of(BuildContext context) {
-    final ButtonTheme result = context.inheritFromWidgetOfExactType(ButtonTheme);
-    return result ?? const ButtonTheme();
-  }
-
-  @override
-  bool updateShouldNotify(ButtonTheme oldTheme) {
-    return textTheme != oldTheme.textTheme
-        || padding != oldTheme.padding
-        || minWidth != oldTheme.minWidth
-        || height != oldTheme.height;
-  }
-}
-
-/// The framework for building material design buttons.
-///
-/// Rather than using this class directly, consider using [FlatButton] or
-/// [RaisedButton], which configure this class with appropriate defaults that
-/// match the material design specification.
-///
-/// MaterialButtons whose [onPressed] handler is null will be disabled. To have
-/// an enabled button, make sure to pass a non-null value for onPressed.
-///
-/// If you want an ink-splash effect for taps, but don't want to use a button,
-/// consider using [InkWell] directly.
-///
-/// The button will expand to fit the child widget, if necessary.
-///
-/// See also:
-///
-///  * [IconButton], to create buttons that contain icons rather than text.
-class MaterialButton extends StatefulWidget {
-  /// Creates a material button.
-  ///
-  /// Rather than creating a material button directly, consider using
-  /// [FlatButton] or [RaisedButton].
-  const MaterialButton({
-    Key key,
-    this.colorBrightness,
-    this.textTheme,
-    this.textColor,
-    this.color,
+    @required this.onPressed,
+    this.onHighlightChanged,
+    this.textStyle,
+    this.fillColor,
+    this.focusColor,
+    this.hoverColor,
     this.highlightColor,
     this.splashColor,
-    this.elevation,
-    this.highlightElevation,
-    this.minWidth,
-    this.height,
-    this.padding,
-    @required this.onPressed,
-    this.child
-  }) : super(key: key);
+    this.elevation = 2.0,
+    this.focusElevation = 4.0,
+    this.hoverElevation = 4.0,
+    this.highlightElevation = 8.0,
+    this.disabledElevation = 0.0,
+    this.padding = EdgeInsets.zero,
+    this.constraints = const BoxConstraints(minWidth: 88.0, minHeight: 36.0),
+    this.shape = const RoundedRectangleBorder(),
+    this.animationDuration = kThemeChangeDuration,
+    this.clipBehavior = Clip.none,
+    this.focusNode,
+    this.autofocus = false,
+    MaterialTapTargetSize materialTapTargetSize,
+    this.child,
+  }) : materialTapTargetSize = materialTapTargetSize ?? MaterialTapTargetSize.padded,
+       assert(shape != null),
+       assert(elevation != null && elevation >= 0.0),
+       assert(focusElevation != null && focusElevation >= 0.0),
+       assert(hoverElevation != null && hoverElevation >= 0.0),
+       assert(highlightElevation != null && highlightElevation >= 0.0),
+       assert(disabledElevation != null && disabledElevation >= 0.0),
+       assert(padding != null),
+       assert(constraints != null),
+       assert(animationDuration != null),
+       assert(clipBehavior != null),
+       assert(autofocus != null),
+       super(key: key);
 
-  /// The theme brightness to use for this button.
+  /// Called when the button is tapped or otherwise activated.
   ///
-  /// Defaults to the brightness from [ThemeData.brightness].
-  final Brightness colorBrightness;
+  /// If this is set to null, the button will be disabled, see [enabled].
+  final VoidCallback onPressed;
 
-  /// The color scheme to use for this button's text.
+  /// Called by the underlying [InkWell] widget's [InkWell.onHighlightChanged]
+  /// callback.
   ///
-  /// Defaults to the button color from [ButtonTheme].
-  final ButtonTextTheme textTheme;
+  /// If [onPressed] changes from null to non-null while a gesture is ongoing,
+  /// this can fire during the build phase (in which case calling
+  /// [State.setState] is not allowed).
+  final ValueChanged<bool> onHighlightChanged;
 
-  /// The color to use for this button's text.
-  final Color textColor;
+  /// Defines the default text style, with [Material.textStyle], for the
+  /// button's [child].
+  ///
+  /// If [textStyle.color] is a [MaterialStateProperty<Color>], [MaterialStateProperty.resolve]
+  /// is used for the following [MaterialState]s:
+  ///
+  ///  * [MaterialState.pressed].
+  ///  * [MaterialState.hovered].
+  ///  * [MaterialState.focused].
+  ///  * [MaterialState.disabled].
+  final TextStyle textStyle;
 
-  /// The primary color of the button, as printed on the [Material], while it
-  /// is in its default (unpressed, enabled) state.
-  ///
-  /// Defaults to null, meaning that the color is automatically derived from the [Theme].
-  ///
-  /// Typically, a material design color will be used, as follows:
-  ///
-  /// ```dart
-  ///  new MaterialButton(
-  ///    color: Colors.blue[500],
-  ///    onPressed: _handleTap,
-  ///    child: new Text('DEMO'),
-  ///  ),
-  /// ```
-  final Color color;
+  /// The color of the button's [Material].
+  final Color fillColor;
 
-  /// The primary color of the button when the button is in the down (pressed)
-  /// state.
-  ///
-  /// The splash is represented as a circular overlay that appears above the
-  /// [highlightColor] overlay. The splash overlay has a center point that
-  /// matches the hit point of the user touch event. The splash overlay will
-  /// expand to fill the button area if the touch is held for long enough time.
-  /// If the splash color has transparency then the highlight and button color
-  /// will show through.
-  ///
-  /// Defaults to the Theme's splash color, [ThemeData.splashColor].
-  final Color splashColor;
+  /// The color for the button's [Material] when it has the input focus.
+  final Color focusColor;
 
-  /// The secondary color of the button when the button is in the down (pressed)
-  /// state.
-  ///
-  /// The highlight color is represented as a solid color that is overlaid over
-  /// the button color (if any). If the highlight color has transparency, the
-  /// button color will show through. The highlight fades in quickly as the
-  /// button is held down.
-  ///
-  /// Defaults to the Theme's highlight color, [ThemeData.highlightColor].
+  /// The color for the button's [Material] when a pointer is hovering over it.
+  final Color hoverColor;
+
+  /// The highlight color for the button's [InkWell].
   final Color highlightColor;
 
-  /// The z-coordinate at which to place this button. This controls the size of
-  /// the shadow below the button.
+  /// The splash color for the button's [InkWell].
+  final Color splashColor;
+
+  /// The elevation for the button's [Material] when the button
+  /// is [enabled] but not pressed.
   ///
-  /// Defaults to 0.
+  /// Defaults to 2.0. The value is always non-negative.
   ///
   /// See also:
   ///
-  ///  * [FlatButton], a material button specialized for the case where the
-  ///    elevation is zero.
-  ///  * [RaisedButton], a material button specialized for the case where the
-  ///    elevation is non-zero.
+  ///  * [highlightElevation], the default elevation.
+  ///  * [hoverElevation], the elevation when a pointer is hovering over the
+  ///    button.
+  ///  * [focusElevation], the elevation when the button is focused.
+  ///  * [disabledElevation], the elevation when the button is disabled.
   final double elevation;
 
-  /// The z-coordinate at which to place this button when highlighted. This
-  /// controls the size of the shadow below the button.
+  /// The elevation for the button's [Material] when the button
+  /// is [enabled] and a pointer is hovering over it.
   ///
-  /// Defaults to 0.
+  /// Defaults to 4.0. The value is always non-negative.
+  ///
+  /// If the button is [enabled], and being pressed (in the highlighted state),
+  /// then the [highlightElevation] take precedence over the [hoverElevation].
   ///
   /// See also:
   ///
   ///  * [elevation], the default elevation.
+  ///  * [focusElevation], the elevation when the button is focused.
+  ///  * [disabledElevation], the elevation when the button is disabled.
+  ///  * [highlightElevation], the elevation when the button is pressed.
+  final double hoverElevation;
+
+  /// The elevation for the button's [Material] when the button
+  /// is [enabled] and has the input focus.
+  ///
+  /// Defaults to 4.0. The value is always non-negative.
+  ///
+  /// If the button is [enabled], and being pressed (in the highlighted state),
+  /// or a mouse cursor is hovering over the button, then the [hoverElevation]
+  /// and [highlightElevation] take precedence over the [focusElevation].
+  ///
+  /// See also:
+  ///
+  ///  * [elevation], the default elevation.
+  ///  * [hoverElevation], the elevation when a pointer is hovering over the
+  ///    button.
+  ///  * [disabledElevation], the elevation when the button is disabled.
+  ///  * [highlightElevation], the elevation when the button is pressed.
+  final double focusElevation;
+
+  /// The elevation for the button's [Material] when the button
+  /// is [enabled] and pressed.
+  ///
+  /// Defaults to 8.0. The value is always non-negative.
+  ///
+  /// See also:
+  ///
+  ///  * [elevation], the default elevation.
+  ///  * [hoverElevation], the elevation when a pointer is hovering over the
+  ///  button.
+  ///  * [focusElevation], the elevation when the button is focused.
+  ///  * [disabledElevation], the elevation when the button is disabled.
   final double highlightElevation;
 
-  /// The smallest horizontal extent that the button will occupy.
+  /// The elevation for the button's [Material] when the button
+  /// is not [enabled].
   ///
-  /// Defaults to the value from the current [ButtonTheme].
-  final double minWidth;
+  /// Defaults to 0.0. The value is always non-negative.
+  ///
+  /// See also:
+  ///
+  ///  * [elevation], the default elevation.
+  ///  * [hoverElevation], the elevation when a pointer is hovering over the
+  ///  button.
+  ///  * [focusElevation], the elevation when the button is focused.
+  ///  * [highlightElevation], the elevation when the button is pressed.
+  final double disabledElevation;
 
-  /// The vertical extent of the button.
-  ///
-  /// Defaults to the value from the current [ButtonTheme].
-  final double height;
-
-  /// The amount of space to surround the child inside the bounds of the button.
-  ///
-  /// Defaults to the value from the current [ButtonTheme].
+  /// The internal padding for the button's [child].
   final EdgeInsetsGeometry padding;
 
-  /// The callback that is called when the button is tapped or otherwise activated.
+  /// Defines the button's size.
   ///
-  /// If this is set to null, the button will be disabled.
-  final VoidCallback onPressed;
+  /// Typically used to constrain the button's minimum size.
+  final BoxConstraints constraints;
 
-  /// The widget below this widget in the tree.
+  /// The shape of the button's [Material].
+  ///
+  /// The button's highlight and splash are clipped to this shape. If the
+  /// button has an elevation, then its drop shadow is defined by this shape.
+  ///
+  /// If [shape] is a [MaterialStateProperty<ShapeBorder>], [MaterialStateProperty.resolve]
+  /// is used for the following [MaterialState]s:
+  ///
+  /// * [MaterialState.pressed].
+  /// * [MaterialState.hovered].
+  /// * [MaterialState.focused].
+  /// * [MaterialState.disabled].
+  final ShapeBorder shape;
+
+  /// Defines the duration of animated changes for [shape] and [elevation].
+  ///
+  /// The default value is [kThemeChangeDuration].
+  final Duration animationDuration;
+
+  /// Typically the button's label.
   final Widget child;
 
-  /// Whether the button is enabled or disabled. Buttons are disabled by default. To
-  /// enable a button, set its [onPressed] property to a non-null value.
+  /// Whether the button is enabled or disabled.
+  ///
+  /// Buttons are disabled by default. To enable a button, set its [onPressed]
+  /// property to a non-null value.
   bool get enabled => onPressed != null;
 
-  @override
-  _MaterialButtonState createState() => new _MaterialButtonState();
+  /// Configures the minimum size of the tap target.
+  ///
+  /// Defaults to [MaterialTapTargetSize.padded].
+  ///
+  /// See also:
+  ///
+  ///  * [MaterialTapTargetSize], for a description of how this affects tap targets.
+  final MaterialTapTargetSize materialTapTargetSize;
+
+  /// {@macro flutter.widgets.Focus.focusNode}
+  final FocusNode focusNode;
+
+  /// {@macro flutter.widgets.Focus.autofocus}
+  final bool autofocus;
+
+  /// {@macro flutter.widgets.Clip}
+  ///
+  /// Defaults to [Clip.none], and must not be null.
+  final Clip clipBehavior;
 
   @override
-  void debugFillProperties(DiagnosticPropertiesBuilder description) {
-    super.debugFillProperties(description);
-    description.add(new FlagProperty('enabled', value: enabled, ifFalse: 'disabled'));
-  }
+  _RawMaterialButtonState createState() => _RawMaterialButtonState();
 }
 
-class _MaterialButtonState extends State<MaterialButton> {
-  bool _highlight = false;
+class _RawMaterialButtonState extends State<RawMaterialButton> {
+  final Set<MaterialState> _states = <MaterialState>{};
 
-  Brightness get _colorBrightness {
-    return widget.colorBrightness ?? Theme.of(context).brightness;
-  }
+  bool get _hovered => _states.contains(MaterialState.hovered);
+  bool get _focused => _states.contains(MaterialState.focused);
+  bool get _pressed => _states.contains(MaterialState.pressed);
+  bool get _disabled => _states.contains(MaterialState.disabled);
 
-  Color get _textColor {
-    if (widget.textColor != null)
-      return widget.textColor;
-    if (widget.enabled) {
-      switch (widget.textTheme ?? ButtonTheme.of(context).textTheme) {
-        case ButtonTextTheme.accent:
-          return Theme.of(context).accentColor;
-        case ButtonTextTheme.normal:
-          switch (_colorBrightness) {
-            case Brightness.light:
-              return Colors.black87;
-            case Brightness.dark:
-              return Colors.white;
-          }
-      }
-    } else {
-      assert(_colorBrightness != null);
-      switch (_colorBrightness) {
-        case Brightness.light:
-          return Colors.black26;
-        case Brightness.dark:
-          return Colors.white30;
-      }
-    }
-    return null;
+  void _updateState(MaterialState state, bool value) {
+    value ? _states.add(state) : _states.remove(state);
   }
 
   void _handleHighlightChanged(bool value) {
-    setState(() {
-      _highlight = value;
-    });
+    if (_pressed != value) {
+      setState(() {
+        _updateState(MaterialState.pressed, value);
+        if (widget.onHighlightChanged != null) {
+          widget.onHighlightChanged(value);
+        }
+      });
+    }
+  }
+
+  void _handleHoveredChanged(bool value) {
+    if (_hovered != value) {
+      setState(() {
+        _updateState(MaterialState.hovered, value);
+      });
+    }
+  }
+
+  void _handleFocusedChanged(bool value) {
+    if (_focused != value) {
+      setState(() {
+        _updateState(MaterialState.focused, value);
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _updateState(MaterialState.disabled, !widget.enabled);
+  }
+
+  @override
+  void didUpdateWidget(RawMaterialButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateState(MaterialState.disabled, !widget.enabled);
+    // If the button is disabled while a press gesture is currently ongoing,
+    // InkWell makes a call to handleHighlightChanged. This causes an exception
+    // because it calls setState in the middle of a build. To preempt this, we
+    // manually update pressed to false when this situation occurs.
+    if (_disabled && _pressed) {
+      _handleHighlightChanged(false);
+    }
+  }
+
+  double get _effectiveElevation {
+    // These conditionals are in order of precedence, so be careful about
+    // reorganizing them.
+    if (_disabled) {
+      return widget.disabledElevation;
+    }
+    if (_pressed) {
+      return widget.highlightElevation;
+    }
+    if (_hovered) {
+      return widget.hoverElevation;
+    }
+    if (_focused) {
+      return widget.focusElevation;
+    }
+    return widget.elevation;
   }
 
   @override
   Widget build(BuildContext context) {
-    assert(debugCheckHasMaterial(context));
-    final ThemeData theme = Theme.of(context);
-    final Color textColor = _textColor;
-    final TextStyle style = theme.textTheme.button.copyWith(color: textColor);
-    final ButtonTheme buttonTheme = ButtonTheme.of(context);
-    final double height = widget.height ?? buttonTheme.height;
-    final double elevation = (_highlight ? widget.highlightElevation : widget.elevation) ?? 0.0;
-    final bool hasColorOrElevation = (widget.color != null || elevation > 0);
-    Widget contents = IconTheme.merge(
-      data: new IconThemeData(
-        color: textColor
+    final Color effectiveTextColor = MaterialStateProperty.resolveAs<Color>(widget.textStyle?.color, _states);
+    final ShapeBorder effectiveShape =  MaterialStateProperty.resolveAs<ShapeBorder>(widget.shape, _states);
+
+    final Widget result = Focus(
+      focusNode: widget.focusNode,
+      canRequestFocus: widget.enabled,
+      onFocusChange: _handleFocusedChanged,
+      autofocus: widget.autofocus,
+      child: ConstrainedBox(
+        constraints: widget.constraints,
+        child: Material(
+          elevation: _effectiveElevation,
+          textStyle: widget.textStyle?.copyWith(color: effectiveTextColor),
+          shape: effectiveShape,
+          color: widget.fillColor,
+          type: widget.fillColor == null ? MaterialType.transparency : MaterialType.button,
+          animationDuration: widget.animationDuration,
+          clipBehavior: widget.clipBehavior,
+          child: InkWell(
+            onHighlightChanged: _handleHighlightChanged,
+            splashColor: widget.splashColor,
+            highlightColor: widget.highlightColor,
+            focusColor: widget.focusColor,
+            hoverColor: widget.hoverColor,
+            onHover: _handleHoveredChanged,
+            onTap: widget.onPressed,
+            customBorder: effectiveShape,
+            child: IconTheme.merge(
+              data: IconThemeData(color: effectiveTextColor),
+              child: Container(
+                padding: widget.padding,
+                child: Center(
+                  widthFactor: 1.0,
+                  heightFactor: 1.0,
+                  child: widget.child,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      child: new InkWell(
-        borderRadius: hasColorOrElevation ? null : kMaterialEdges[MaterialType.button],
-        highlightColor: widget.highlightColor ?? theme.highlightColor,
-        splashColor: widget.splashColor ?? theme.splashColor,
-        onTap: widget.onPressed,
-        onHighlightChanged: _handleHighlightChanged,
-        child: new Container(
-          padding: widget.padding ?? ButtonTheme.of(context).padding,
-          child: new Center(
-            widthFactor: 1.0,
-            heightFactor: 1.0,
-            child: new Semantics(button: true, child: widget.child),
-          )
-        )
-      )
     );
-    if (hasColorOrElevation) {
-      contents = new Material(
-        type: MaterialType.button,
-        color: widget.color,
-        elevation: elevation,
-        textStyle: style,
-        child: contents
-      );
-    } else {
-      contents = new AnimatedDefaultTextStyle(
-        style: style,
-        duration: kThemeChangeDuration,
-        child: contents
-      );
+    Size minSize;
+    switch (widget.materialTapTargetSize) {
+      case MaterialTapTargetSize.padded:
+        minSize = const Size(48.0, 48.0);
+        break;
+      case MaterialTapTargetSize.shrinkWrap:
+        minSize = Size.zero;
+        break;
     }
-    return new ConstrainedBox(
-      constraints: new BoxConstraints(
-        minWidth: widget.minWidth ?? buttonTheme.minWidth,
-        minHeight: height,
+
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: widget.enabled,
+      child: _InputPadding(
+        minSize: minSize,
+        child: result,
       ),
-      child: contents
+    );
+  }
+}
+
+/// A widget to pad the area around a [MaterialButton]'s inner [Material].
+///
+/// Redirect taps that occur in the padded area around the child to the center
+/// of the child. This increases the size of the button and the button's
+/// "tap target", but not its material or its ink splashes.
+class _InputPadding extends SingleChildRenderObjectWidget {
+  const _InputPadding({
+    Key key,
+    Widget child,
+    this.minSize,
+  }) : super(key: key, child: child);
+
+  final Size minSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderInputPadding(minSize);
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, covariant _RenderInputPadding renderObject) {
+    renderObject.minSize = minSize;
+  }
+}
+
+class _RenderInputPadding extends RenderShiftedBox {
+  _RenderInputPadding(this._minSize, [RenderBox child]) : super(child);
+
+  Size get minSize => _minSize;
+  Size _minSize;
+  set minSize(Size value) {
+    if (_minSize == value)
+      return;
+    _minSize = value;
+    markNeedsLayout();
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) {
+    if (child != null)
+      return math.max(child.getMinIntrinsicWidth(height), minSize.width);
+    return 0.0;
+  }
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    if (child != null)
+      return math.max(child.getMinIntrinsicHeight(width), minSize.height);
+    return 0.0;
+  }
+
+  @override
+  double computeMaxIntrinsicWidth(double height) {
+    if (child != null)
+      return math.max(child.getMaxIntrinsicWidth(height), minSize.width);
+    return 0.0;
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    if (child != null)
+      return math.max(child.getMaxIntrinsicHeight(width), minSize.height);
+    return 0.0;
+  }
+
+  @override
+  void performLayout() {
+    if (child != null) {
+      child.layout(constraints, parentUsesSize: true);
+      final double height = math.max(child.size.width, minSize.width);
+      final double width = math.max(child.size.height, minSize.height);
+      size = constraints.constrain(Size(height, width));
+      final BoxParentData childParentData = child.parentData;
+      childParentData.offset = Alignment.center.alongOffset(size - child.size);
+    } else {
+      size = Size.zero;
+    }
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, { Offset position }) {
+    if (super.hitTest(result, position: position)) {
+      return true;
+    }
+    final Offset center = child.size.center(Offset.zero);
+    return result.addWithRawTransform(
+      transform: MatrixUtils.forceToPoint(center),
+      position: center,
+      hitTest: (BoxHitTestResult result, Offset position) {
+        assert(position == center);
+        return child.hitTest(result, position: center);
+      },
     );
   }
 }

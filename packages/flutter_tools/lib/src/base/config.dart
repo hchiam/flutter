@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:convert';
-
+import '../convert.dart';
 import 'context.dart';
 import 'file_system.dart';
 import 'platform.dart';
@@ -11,11 +10,12 @@ import 'platform.dart';
 class Config {
   Config([File configFile]) {
     _configFile = configFile ?? fs.file(fs.path.join(_userHomeDir(), '.flutter_settings'));
-    if (_configFile.existsSync())
-      _values = JSON.decode(_configFile.readAsStringSync());
+    if (_configFile.existsSync()) {
+      _values = json.decode(_configFile.readAsStringSync());
+    }
   }
 
-  static Config get instance => context[Config];
+  static Config get instance => context.get<Config>();
 
   File _configFile;
   String get configPath => _configFile.path;
@@ -28,7 +28,7 @@ class Config {
 
   dynamic getValue(String key) => _values[key];
 
-  void setValue(String key, String value) {
+  void setValue(String key, Object value) {
     _values[key] = value;
     _flushValues();
   }
@@ -47,6 +47,5 @@ class Config {
 
 String _userHomeDir() {
   final String envKey = platform.operatingSystem == 'windows' ? 'APPDATA' : 'HOME';
-  final String value = platform.environment[envKey];
-  return value == null ? '.' : value;
+  return platform.environment[envKey] ?? '.';
 }

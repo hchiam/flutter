@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
 import 'basic.dart';
@@ -20,7 +19,7 @@ import 'sliver.dart';
 /// [SliverPrototypeExtentList] is more efficient than [SliverList] because
 /// [SliverPrototypeExtentList] does not need to lay out its children to obtain
 /// their extent along the main axis. It's a little more flexible than
-/// [SliverFixedExtentList] because there's no need to determine the approriate
+/// [SliverFixedExtentList] because there's no need to determine the appropriate
 /// item extent in pixels.
 ///
 /// See also:
@@ -40,7 +39,8 @@ class SliverPrototypeExtentList extends SliverMultiBoxAdaptorWidget {
     Key key,
     @required SliverChildDelegate delegate,
     @required this.prototypeItem,
-  }) : assert(prototypeItem != null), super(key: key, delegate: delegate);
+  }) : assert(prototypeItem != null),
+       super(key: key, delegate: delegate);
 
   /// Defines the main axis extent of all of this sliver's children.
   ///
@@ -53,11 +53,11 @@ class SliverPrototypeExtentList extends SliverMultiBoxAdaptorWidget {
   @override
   _RenderSliverPrototypeExtentList createRenderObject(BuildContext context) {
     final _SliverPrototypeExtentListElement element = context;
-    return new _RenderSliverPrototypeExtentList(childManager: element);
+    return _RenderSliverPrototypeExtentList(childManager: element);
   }
 
   @override
-  _SliverPrototypeExtentListElement createElement() => new _SliverPrototypeExtentListElement(this);
+  _SliverPrototypeExtentListElement createElement() => _SliverPrototypeExtentListElement(this);
 }
 
 class _SliverPrototypeExtentListElement extends SliverMultiBoxAdaptorElement {
@@ -70,7 +70,7 @@ class _SliverPrototypeExtentListElement extends SliverMultiBoxAdaptorElement {
   _RenderSliverPrototypeExtentList get renderObject => super.renderObject;
 
   Element _prototype;
-  static final Object _prototypeSlot = new Object();
+  static final Object _prototypeSlot = Object();
 
   @override
   void insertChildRenderObject(covariant RenderObject child, covariant dynamic slot) {

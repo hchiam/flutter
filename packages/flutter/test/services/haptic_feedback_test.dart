@@ -3,9 +3,11 @@
 // found in the LICENSE file.
 
 import 'package:flutter/services.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('Haptic feedback control test', () async {
     final List<MethodCall> log = <MethodCall>[];
 
@@ -15,6 +17,29 @@ void main() {
 
     await HapticFeedback.vibrate();
 
-    expect(log, equals(<MethodCall>[const MethodCall('HapticFeedback.vibrate')]));
+    expect(log, hasLength(1));
+    expect(log.single, isMethodCall('HapticFeedback.vibrate', arguments: null));
+  });
+
+  test('Haptic feedback variation tests', () async {
+    Future<void> callAndVerifyHapticFunction(Function hapticFunction, String platformMethodArgument) async {
+      final List<MethodCall> log = <MethodCall>[];
+
+      SystemChannels.platform.setMockMethodCallHandler((MethodCall methodCall) async {
+        log.add(methodCall);
+      });
+
+      await hapticFunction();
+      expect(log, hasLength(1));
+      expect(
+        log.last,
+        isMethodCall('HapticFeedback.vibrate', arguments: platformMethodArgument),
+      );
+    }
+
+    await callAndVerifyHapticFunction(HapticFeedback.lightImpact, 'HapticFeedbackType.lightImpact');
+    await callAndVerifyHapticFunction(HapticFeedback.mediumImpact, 'HapticFeedbackType.mediumImpact');
+    await callAndVerifyHapticFunction(HapticFeedback.heavyImpact, 'HapticFeedbackType.heavyImpact');
+    await callAndVerifyHapticFunction(HapticFeedback.selectionClick, 'HapticFeedbackType.selectionClick');
   });
 }

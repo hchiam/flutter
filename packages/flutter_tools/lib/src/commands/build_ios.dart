@@ -10,6 +10,7 @@ import '../base/utils.dart';
 import '../build_info.dart';
 import '../globals.dart';
 import '../ios/mac.dart';
+import '../runner/flutter_command.dart' show DevelopmentArtifact, FlutterCommandResult;
 import 'build.dart';
 
 class BuildIOSCommand extends BuildSubCommand {
@@ -17,18 +18,28 @@ class BuildIOSCommand extends BuildSubCommand {
     usesTargetOption();
     usesFlavorOption();
     usesPubOption();
-    argParser.addFlag('debug',
-      negatable: false,
-      help: 'Build a debug version of your app (default mode for iOS simulator builds).');
-    argParser.addFlag('profile',
-      negatable: false,
-      help: 'Build a version of your app specialized for performance profiling.');
-    argParser.addFlag('release',
-      negatable: false,
-      help: 'Build a release version of your app (default mode for device builds).');
-    argParser.addFlag('simulator', help: 'Build for the iOS simulator instead of the device.');
-    argParser.addFlag('codesign', negatable: true, defaultsTo: true,
-        help: 'Codesign the application bundle (only available on device builds).');
+    usesBuildNumberOption();
+    usesBuildNameOption();
+    argParser
+      ..addFlag('debug',
+        negatable: false,
+        help: 'Build a debug version of your app (default mode for iOS simulator builds).',
+      )
+      ..addFlag('profile',
+        negatable: false,
+        help: 'Build a version of your app specialized for performance profiling.',
+      )
+      ..addFlag('release',
+        negatable: false,
+        help: 'Build a release version of your app (default mode for device builds).',
+      )
+      ..addFlag('simulator',
+        help: 'Build for the iOS simulator instead of the device.',
+      )
+      ..addFlag('codesign',
+        defaultsTo: true,
+        help: 'Codesign the application bundle (only available on device builds).',
+      );
   }
 
   @override
@@ -38,18 +49,25 @@ class BuildIOSCommand extends BuildSubCommand {
   final String description = 'Build an iOS application bundle (Mac OS X host only).';
 
   @override
-  Future<Null> runCommand() async {
+  Future<Set<DevelopmentArtifact>> get requiredArtifacts async => const <DevelopmentArtifact>{
+    DevelopmentArtifact.universal,
+    DevelopmentArtifact.iOS,
+  };
+
+  @override
+  Future<FlutterCommandResult> runCommand() async {
     final bool forSimulator = argResults['simulator'];
     defaultBuildMode = forSimulator ? BuildMode.debug : BuildMode.release;
 
-    await super.runCommand();
-    if (getCurrentHostPlatform() != HostPlatform.darwin_x64)
+    if (getCurrentHostPlatform() != HostPlatform.darwin_x64) {
       throwToolExit('Building for iOS is only supported on the Mac.');
+    }
 
     final BuildableIOSApp app = await applicationPackages.getPackageForPlatform(TargetPlatform.ios);
 
-    if (app == null)
+    if (app == null) {
       throwToolExit('Application not configured for iOS');
+    }
 
     final bool shouldCodesign = argResults['codesign'];
 
@@ -58,8 +76,9 @@ class BuildIOSCommand extends BuildSubCommand {
         'have to manually codesign before deploying to device.');
     }
     final BuildInfo buildInfo = getBuildInfo();
-    if (forSimulator && !buildInfo.supportsSimulator)
-      throwToolExit('${toTitleCase(buildInfo.modeName)} mode is not supported for simulators.');
+    if (forSimulator && !buildInfo.supportsSimulator) {
+      throwToolExit('${toTitleCase(buildInfo.friendlyModeName)} mode is not supported for simulators.');
+    }
 
     final String logTarget = forSimulator ? 'simulator' : 'device';
 
@@ -68,17 +87,20 @@ class BuildIOSCommand extends BuildSubCommand {
     final XcodeBuildResult result = await buildXcodeProject(
       app: app,
       buildInfo: buildInfo,
-      target: targetFile,
+      targetOverride: targetFile,
       buildForDevice: !forSimulator,
-      codesign: shouldCodesign
+      codesign: shouldCodesign,
     );
 
     if (!result.success) {
-      await diagnoseXcodeBuildFailure(result, app);
+      await diagnoseXcodeBuildFailure(result);
       throwToolExit('Encountered error while building for $logTarget.');
     }
 
-    if (result.output != null)
+    if (result.output != null) {
       printStatus('Built ${result.output}.');
+    }
+
+    return null;
   }
 }

@@ -4,7 +4,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart' show TestVSync;
+import '../flutter_test_alternative.dart';
+
+import 'rendering_tester.dart';
 
 int countSemanticsChildren(RenderObject object) {
   int count = 0;
@@ -13,11 +16,11 @@ int countSemanticsChildren(RenderObject object) {
   });
   return count;
 }
-    
+
 void main() {
   test('RenderOpacity and children and semantics', () {
-    final RenderOpacity box = new RenderOpacity(
-      child: new RenderParagraph(
+    final RenderOpacity box = RenderOpacity(
+      child: RenderParagraph(
         const TextSpan(),
         textDirection: TextDirection.ltr,
       ),
@@ -34,6 +37,39 @@ void main() {
     box.opacity = 0.125;
     expect(countSemanticsChildren(box), 1);
     box.opacity = 0.0;
+    expect(countSemanticsChildren(box), 0);
+  });
+
+  test('RenderOpacity and children and semantics', () {
+    final AnimationController controller = AnimationController(vsync: const TestVSync());
+    final RenderAnimatedOpacity box = RenderAnimatedOpacity(
+      alwaysIncludeSemantics: false,
+      opacity: controller,
+      child: RenderParagraph(
+        const TextSpan(),
+        textDirection: TextDirection.ltr,
+      ),
+    );
+    expect(countSemanticsChildren(box), 0); // controller defaults to 0.0
+    controller.value = 0.2; // has no effect, box isn't subscribed yet
+    expect(countSemanticsChildren(box), 0);
+    controller.value = 1.0; // ditto
+    expect(countSemanticsChildren(box), 0); // alpha is still 0
+    layout(box); // this causes the box to attach, which makes it subscribe
+    expect(countSemanticsChildren(box), 1);
+    controller.value = 1.0;
+    expect(countSemanticsChildren(box), 1);
+    controller.value = 0.5;
+    expect(countSemanticsChildren(box), 1);
+    controller.value = 0.25;
+    expect(countSemanticsChildren(box), 1);
+    controller.value = 0.125;
+    expect(countSemanticsChildren(box), 1);
+    controller.value = 0.0;
+    expect(countSemanticsChildren(box), 0);
+    controller.value = 0.125;
+    expect(countSemanticsChildren(box), 1);
+    controller.value = 0.0;
     expect(countSemanticsChildren(box), 0);
   });
 }

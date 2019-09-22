@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import 'basic_types.dart';
 import 'borders.dart';
@@ -11,10 +10,12 @@ import 'box_border.dart';
 import 'box_decoration.dart';
 import 'box_shadow.dart';
 import 'circle_border.dart';
+import 'colors.dart';
 import 'decoration.dart';
+import 'decoration_image.dart';
 import 'edge_insets.dart';
 import 'gradient.dart';
-import 'images.dart';
+import 'image_provider.dart';
 import 'rounded_rectangle_border.dart';
 
 /// An immutable description of how to paint an arbitrary shape.
@@ -23,23 +24,23 @@ import 'rounded_rectangle_border.dart';
 /// optionally filling it with a color or a gradient, optionally painting an
 /// image into it, and optionally casting a shadow.
 ///
-/// ## Sample code
+/// {@tool sample}
 ///
 /// The following example uses the [Container] widget from the widgets layer to
 /// draw a white rectangle with a 24-pixel multicolor outline, with the text
 /// "RGB" inside it:
 ///
 /// ```dart
-/// new Container(
-///   decoration: new ShapeDecoration(
+/// Container(
+///   decoration: ShapeDecoration(
 ///     color: Colors.white,
-///     shape: new Border.all(
+///     shape: Border.all(
 ///       color: Colors.red,
 ///       width: 8.0,
-///     ) + new Border.all(
+///     ) + Border.all(
 ///       color: Colors.green,
 ///       width: 8.0,
-///     ) + new Border.all(
+///     ) + Border.all(
 ///       color: Colors.blue,
 ///       width: 8.0,
 ///     ),
@@ -47,12 +48,13 @@ import 'rounded_rectangle_border.dart';
 ///   child: const Text('RGB', textAlign: TextAlign.center),
 /// )
 /// ```
+/// {@end-tool}
 ///
 /// See also:
 ///
 ///  * [DecoratedBox] and [Container], widgets that can be configured with
 ///    [ShapeDecoration] objects.
-///  * [BoxDecoration], a similar [Decoration] that is optimised for rectangles
+///  * [BoxDecoration], a similar [Decoration] that is optimized for rectangles
 ///    specifically.
 ///  * [ShapeBorder], the base class for the objects that are used in the
 ///    [shape] property.
@@ -94,7 +96,7 @@ class ShapeDecoration extends Decoration {
       case BoxShape.circle:
         if (source.border != null) {
           assert(source.border.isUniform);
-          shape = new CircleBorder(side: source.border.top);
+          shape = CircleBorder(side: source.border.top);
         } else {
           shape = const CircleBorder();
         }
@@ -102,7 +104,7 @@ class ShapeDecoration extends Decoration {
       case BoxShape.rectangle:
         if (source.borderRadius != null) {
           assert(source.border == null || source.border.isUniform);
-          shape = new RoundedRectangleBorder(
+          shape = RoundedRectangleBorder(
             side: source.border?.top ?? BorderSide.none,
             borderRadius: source.borderRadius,
           );
@@ -111,7 +113,7 @@ class ShapeDecoration extends Decoration {
         }
         break;
     }
-    return new ShapeDecoration(
+    return ShapeDecoration(
       color: source.color,
       image: source.image,
       gradient: source.gradient,
@@ -139,7 +141,13 @@ class ShapeDecoration extends Decoration {
   /// The image is drawn over the [color] or [gradient].
   final DecorationImage image;
 
-  /// A list of shadows cast by this shape behind the shape.
+  /// A list of shadows cast by the [shape].
+  ///
+  /// See also:
+  ///
+  ///  * [kElevationToShadow], for some predefined shadows used in Material
+  ///    Design.
+  ///  * [PhysicalModel], a widget for showing shadows.
   final List<BoxShadow> shadows;
 
   /// The shape to fill the [color], [gradient], and [image] into and to cast as
@@ -150,6 +158,20 @@ class ShapeDecoration extends Decoration {
   ///
   /// The [shape] property specifies the outline (border) of the decoration. The
   /// shape must not be null.
+  ///
+  /// ## Directionality-dependent shapes
+  ///
+  /// Some [ShapeBorder] subclasses are sensitive to the [TextDirection]. The
+  /// direction that is provided to the border (e.g. for its [ShapeBorder.paint]
+  /// method) is the one specified in the [ImageConfiguration]
+  /// ([ImageConfiguration.textDirection]) provided to the [BoxPainter] (via its
+  /// [BoxPainter.paint method). The [BoxPainter] is obtained when
+  /// [createBoxPainter] is called.
+  ///
+  /// When a [ShapeDecoration] is used with a [Container] widget or a
+  /// [DecoratedBox] widget (which is what [Container] uses), the
+  /// [TextDirection] specified in the [ImageConfiguration] is obtained from the
+  /// ambient [Directionality], using [createLocalImageConfiguration].
   final ShapeBorder shape;
 
   /// The inset space occupied by the [shape]'s border.
@@ -164,7 +186,7 @@ class ShapeDecoration extends Decoration {
   @override
   ShapeDecoration lerpFrom(Decoration a, double t) {
     if (a is BoxDecoration) {
-      return ShapeDecoration.lerp(new ShapeDecoration.fromBoxDecoration(a), this, t);
+      return ShapeDecoration.lerp(ShapeDecoration.fromBoxDecoration(a), this, t);
     } else if (a == null || a is ShapeDecoration) {
       return ShapeDecoration.lerp(a, this, t);
     }
@@ -174,7 +196,7 @@ class ShapeDecoration extends Decoration {
   @override
   ShapeDecoration lerpTo(Decoration b, double t) {
     if (b is BoxDecoration) {
-      return ShapeDecoration.lerp(this, new ShapeDecoration.fromBoxDecoration(b), t);
+      return ShapeDecoration.lerp(this, ShapeDecoration.fromBoxDecoration(b), t);
     } else if (b == null || b is ShapeDecoration) {
       return ShapeDecoration.lerp(this, b, t);
     }
@@ -186,12 +208,11 @@ class ShapeDecoration extends Decoration {
   /// Interpolates each parameter of the decoration separately.
   ///
   /// If both values are null, this returns null. Otherwise, it returns a
-  /// non-null value. If neither value is null and `t == 0.0`, then `a` is
-  /// returned unmodified; if `t == 1.0` then `b` is returned unmodified.
-  /// Otherwise, the values are computed by interpolating the properties
-  /// appropriately, treating a null argument like a [ShapeDecoration] whose
+  /// non-null value, with null arguments treated like a [ShapeDecoration] whose
   /// fields are all null (including the [shape], which cannot normally be
   /// null).
+  ///
+  /// {@macro dart.ui.shadow.lerp}
   ///
   /// See also:
   ///
@@ -201,6 +222,7 @@ class ShapeDecoration extends Decoration {
   ///    and which use [ShapeDecoration.lerp] when interpolating two
   ///    [ShapeDecoration]s or a [ShapeDecoration] to or from null.
   static ShapeDecoration lerp(ShapeDecoration a, ShapeDecoration b, double t) {
+    assert(t != null);
     if (a == null && b == null)
       return null;
     if (a != null && b != null) {
@@ -209,7 +231,7 @@ class ShapeDecoration extends Decoration {
       if (t == 1.0)
         return b;
     }
-    return new ShapeDecoration(
+    return ShapeDecoration(
       color: Color.lerp(a?.color, b?.color, t),
       gradient: Gradient.lerp(a?.gradient, b?.gradient, t),
       image: t < 0.5 ? a.image : b.image, // TODO(ianh): cross-fade the image
@@ -247,11 +269,11 @@ class ShapeDecoration extends Decoration {
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.defaultDiagnosticsTreeStyle = DiagnosticsTreeStyle.whitespace;
-    properties.add(new DiagnosticsProperty<Color>('color', color, defaultValue: null));
-    properties.add(new DiagnosticsProperty<Gradient>('gradient', gradient, defaultValue: null));
-    properties.add(new DiagnosticsProperty<DecorationImage>('image', image, defaultValue: null));
-    properties.add(new IterableProperty<BoxShadow>('shadows', shadows, defaultValue: null, style: DiagnosticsTreeStyle.whitespace));
-    properties.add(new DiagnosticsProperty<ShapeBorder>('shape', shape));
+    properties.add(ColorProperty('color', color, defaultValue: null));
+    properties.add(DiagnosticsProperty<Gradient>('gradient', gradient, defaultValue: null));
+    properties.add(DiagnosticsProperty<DecorationImage>('image', image, defaultValue: null));
+    properties.add(IterableProperty<BoxShadow>('shadows', shadows, defaultValue: null, style: DiagnosticsTreeStyle.whitespace));
+    properties.add(DiagnosticsProperty<ShapeBorder>('shape', shape));
   }
 
   @override
@@ -260,9 +282,9 @@ class ShapeDecoration extends Decoration {
   }
 
   @override
-  _ShapeDecorationPainter createBoxPainter([VoidCallback onChanged]) {
+  _ShapeDecorationPainter createBoxPainter([ VoidCallback onChanged ]) {
     assert(onChanged != null || image == null);
-    return new _ShapeDecorationPainter(this, onChanged);
+    return _ShapeDecorationPainter(this, onChanged);
   }
 }
 
@@ -275,6 +297,7 @@ class _ShapeDecorationPainter extends BoxPainter {
   final ShapeDecoration _decoration;
 
   Rect _lastRect;
+  TextDirection _lastTextDirection;
   Path _outerPath;
   Path _innerPath;
   Paint _interiorPaint;
@@ -282,16 +305,17 @@ class _ShapeDecorationPainter extends BoxPainter {
   List<Path> _shadowPaths;
   List<Paint> _shadowPaints;
 
-  void _precache(Rect rect) {
+  void _precache(Rect rect, TextDirection textDirection) {
     assert(rect != null);
-    if (rect == _lastRect)
+    if (rect == _lastRect && textDirection == _lastTextDirection)
       return;
+
     // We reach here in two cases:
     //  - the very first time we paint, in which case everything except _decoration is null
     //  - subsequent times, if the rect has changed, in which case we only need to update
     //    the features that depend on the actual rect.
     if (_interiorPaint == null && (_decoration.color != null || _decoration.gradient != null)) {
-      _interiorPaint = new Paint();
+      _interiorPaint = Paint();
       if (_decoration.color != null)
         _interiorPaint.color = _decoration.color;
     }
@@ -300,25 +324,23 @@ class _ShapeDecorationPainter extends BoxPainter {
     if (_decoration.shadows != null) {
       if (_shadowCount == null) {
         _shadowCount = _decoration.shadows.length;
-        _shadowPaths = new List<Path>(_shadowCount);
-        _shadowPaints = new List<Paint>(_shadowCount);
-        for (int index = 0; index < _shadowCount; index += 1) {
-          final BoxShadow shadow = _decoration.shadows[index];
-          _shadowPaints[index] = new Paint()
-            ..color = shadow.color
-            ..maskFilter = new MaskFilter.blur(BlurStyle.normal, shadow.blurSigma);
-        }
+        _shadowPaths = List<Path>(_shadowCount);
+        _shadowPaints = List<Paint>(_shadowCount);
+        for (int index = 0; index < _shadowCount; index += 1)
+          _shadowPaints[index] = _decoration.shadows[index].toPaint();
       }
       for (int index = 0; index < _shadowCount; index += 1) {
         final BoxShadow shadow = _decoration.shadows[index];
-        _shadowPaths[index] = _decoration.shape.getOuterPath(rect.shift(shadow.offset).inflate(shadow.spreadRadius));
+        _shadowPaths[index] = _decoration.shape.getOuterPath(rect.shift(shadow.offset).inflate(shadow.spreadRadius), textDirection: textDirection);
       }
     }
     if (_interiorPaint != null || _shadowCount != null)
-      _outerPath = _decoration.shape.getOuterPath(rect);
+      _outerPath = _decoration.shape.getOuterPath(rect, textDirection: textDirection);
     if (_decoration.image != null)
-      _innerPath = _decoration.shape.getInnerPath(rect);
+      _innerPath = _decoration.shape.getInnerPath(rect, textDirection: textDirection);
+
     _lastRect = rect;
+    _lastTextDirection = textDirection;
   }
 
   void _paintShadows(Canvas canvas) {
@@ -352,10 +374,11 @@ class _ShapeDecorationPainter extends BoxPainter {
     assert(configuration != null);
     assert(configuration.size != null);
     final Rect rect = offset & configuration.size;
-    _precache(rect);
+    final TextDirection textDirection = configuration.textDirection;
+    _precache(rect, textDirection);
     _paintShadows(canvas);
     _paintInterior(canvas);
     _paintImage(canvas, configuration);
-    _decoration.shape.paint(canvas, rect);
+    _decoration.shape.paint(canvas, rect, textDirection: textDirection);
   }
 }

@@ -5,6 +5,9 @@
 import 'dart:ui' show Color, hashValues;
 import 'dart:ui' as ui show lerpDouble;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
+
 /// Defines the color, opacity, and size of icons.
 ///
 /// Used by [IconTheme] to control the color, opacity, and size of icons in a
@@ -13,12 +16,12 @@ import 'dart:ui' as ui show lerpDouble;
 /// To obtain the current icon theme, use [IconTheme.of]. To convert an icon
 /// theme to a version with all the fields filled in, use [new
 /// IconThemeData.fallback].
-class IconThemeData {
+class IconThemeData extends Diagnosticable {
   /// Creates an icon theme data.
   ///
   /// The opacity applies to both explicit and default icon colors. The value
   /// is clamped between 0.0 and 1.0.
-  const IconThemeData({ this.color, double opacity, this.size }) : _opacity = opacity;
+  const IconThemeData({this.color, double opacity, this.size}) : _opacity = opacity;
 
   /// Creates an icon them with some reasonable default values.
   ///
@@ -31,10 +34,10 @@ class IconThemeData {
   /// Creates a copy of this icon theme but with the given fields replaced with
   /// the new values.
   IconThemeData copyWith({ Color color, double opacity, double size }) {
-    return new IconThemeData(
+    return IconThemeData(
       color: color ?? this.color,
       opacity: opacity ?? this.opacity,
-      size: size ?? this.size
+      size: size ?? this.size,
     );
   }
 
@@ -47,7 +50,7 @@ class IconThemeData {
     return copyWith(
       color: other.color,
       opacity: other.opacity,
-      size: other.size
+      size: other.size,
     );
   }
 
@@ -65,11 +68,14 @@ class IconThemeData {
   final double size;
 
   /// Linearly interpolate between two icon theme data objects.
-  static IconThemeData lerp(IconThemeData begin, IconThemeData end, double t) {
-    return new IconThemeData(
-      color: Color.lerp(begin.color, end.color, t),
-      opacity: ui.lerpDouble(begin.opacity, end.opacity, t),
-      size: ui.lerpDouble(begin.size, end.size, t)
+  ///
+  /// {@macro dart.ui.shadow.lerp}
+  static IconThemeData lerp(IconThemeData a, IconThemeData b, double t) {
+    assert(t != null);
+    return IconThemeData(
+      color: Color.lerp(a?.color, b?.color, t),
+      opacity: ui.lerpDouble(a?.opacity, b?.opacity, t),
+      size: ui.lerpDouble(a?.size, b?.size, t),
     );
   }
 
@@ -87,16 +93,10 @@ class IconThemeData {
   int get hashCode => hashValues(color, opacity, size);
 
   @override
-  String toString() {
-    final List<String> result = <String>[];
-    if (color != null)
-      result.add('color: $color');
-    if (_opacity != null)
-      result.add('opacity: $_opacity');
-    if (size != null)
-      result.add('size: $size');
-    if (result.isEmpty)
-      return '<no theme>';
-    return result.join(', ');
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(ColorProperty('color', color, defaultValue: null));
+    properties.add(DoubleProperty('opacity', opacity, defaultValue: null));
+    properties.add(DoubleProperty('size', size, defaultValue: null));
   }
 }

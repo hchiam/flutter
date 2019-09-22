@@ -3,44 +3,31 @@
 // found in the LICENSE file.
 
 class Version implements Comparable<Version> {
-  static final RegExp versionPattern =
-      new RegExp(r'^(\d+)(\.(\d+)(\.(\d+))?)?');
-
-  /// The major version number: "1" in "1.2.3".
-  final int major;
-
-  /// The minor version number: "2" in "1.2.3".
-  final int minor;
-
-  /// The patch version number: "3" in "1.2.3".
-  final int patch;
-
-  /// The original string representation of the version number.
-  ///
-  /// This preserves textual artifacts like leading zeros that may be left out
-  /// of the parsed version.
-  final String _text;
-
   /// Creates a new [Version] object.
   factory Version(int major, int minor, int patch, {String text}) {
     if (text == null) {
       text = major == null ? '0' : '$major';
-      if (minor != null)
+      if (minor != null) {
         text = '$text.$minor';
-      if (patch != null)
+      }
+      if (patch != null) {
         text = '$text.$patch';
+      }
     }
 
-    return new Version._(major ?? 0, minor ?? 0, patch ?? 0, text);
+    return Version._(major ?? 0, minor ?? 0, patch ?? 0, text);
   }
 
   Version._(this.major, this.minor, this.patch, this._text) {
-    if (major < 0)
-      throw new ArgumentError('Major version must be non-negative.');
-    if (minor < 0)
-      throw new ArgumentError('Minor version must be non-negative.');
-    if (patch < 0)
-      throw new ArgumentError('Patch version must be non-negative.');
+    if (major < 0) {
+      throw ArgumentError('Major version must be non-negative.');
+    }
+    if (minor < 0) {
+      throw ArgumentError('Minor version must be non-negative.');
+    }
+    if (patch < 0) {
+      throw ArgumentError('Patch version must be non-negative.');
+    }
   }
 
   /// Creates a new [Version] by parsing [text].
@@ -54,7 +41,7 @@ class Version implements Comparable<Version> {
       final int major = int.parse(match[1] ?? '0');
       final int minor = int.parse(match[3] ?? '0');
       final int patch = int.parse(match[5] ?? '0');
-      return new Version._(major, minor, patch, text);
+      return Version._(major, minor, patch, text);
     } on FormatException {
       return null;
     }
@@ -74,14 +61,33 @@ class Version implements Comparable<Version> {
   }
 
 
-  static Version get unknown => new Version(0, 0, 0, text: 'unknown');
+  static Version get unknown => Version(0, 0, 0, text: 'unknown');
+
+  /// The major version number: "1" in "1.2.3".
+  final int major;
+
+  /// The minor version number: "2" in "1.2.3".
+  final int minor;
+
+  /// The patch version number: "3" in "1.2.3".
+  final int patch;
+
+  /// The original string representation of the version number.
+  ///
+  /// This preserves textual artifacts like leading zeros that may be left out
+  /// of the parsed version.
+  final String _text;
+
+  static final RegExp versionPattern =
+      RegExp(r'^(\d+)(\.(\d+)(\.(\d+))?)?');
 
   /// Two [Version]s are equal if their version numbers are. The version text
   /// is ignored.
   @override
   bool operator ==(dynamic other) {
-    if (other is! Version)
+    if (other is! Version) {
       return false;
+    }
     return major == other.major && minor == other.minor && patch == other.patch;
   }
 
@@ -95,10 +101,12 @@ class Version implements Comparable<Version> {
 
   @override
   int compareTo(Version other) {
-    if (major != other.major)
+    if (major != other.major) {
       return major.compareTo(other.major);
-    if (minor != other.minor)
+    }
+    if (minor != other.minor) {
       return minor.compareTo(other.minor);
+    }
     return patch.compareTo(other.patch);
   }
 

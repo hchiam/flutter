@@ -16,7 +16,7 @@ class LogsCommand extends FlutterCommand {
     argParser.addFlag('clear',
       negatable: false,
       abbr: 'c',
-      help: 'Clear log history before reading from logs.'
+      help: 'Clear log history before reading from logs.',
     );
   }
 
@@ -26,20 +26,25 @@ class LogsCommand extends FlutterCommand {
   @override
   final String description = 'Show log output for running Flutter apps.';
 
+  @override
+  Future<Set<DevelopmentArtifact>> get requiredArtifacts async => const <DevelopmentArtifact>{};
+
   Device device;
 
   @override
-  Future<Null> verifyThenRunCommand() async {
+  Future<FlutterCommandResult> verifyThenRunCommand(String commandPath) async {
     device = await findTargetDevice();
-    if (device == null)
+    if (device == null) {
       throwToolExit(null);
-    return super.verifyThenRunCommand();
+    }
+    return super.verifyThenRunCommand(commandPath);
   }
 
   @override
-  Future<Null> runCommand() async {
-    if (argResults['clear'])
+  Future<FlutterCommandResult> runCommand() async {
+    if (argResults['clear']) {
       device.clearLogs();
+    }
 
     final DeviceLogReader logReader = device.getLogReader();
 
@@ -47,17 +52,17 @@ class LogsCommand extends FlutterCommand {
 
     printStatus('Showing $logReader logs:');
 
-    final Completer<int> exitCompleter = new Completer<int>();
+    final Completer<int> exitCompleter = Completer<int>();
 
     // Start reading.
     final StreamSubscription<String> subscription = logReader.logLines.listen(
-      printStatus,
+      (String message) => printStatus(message, wrap: false),
       onDone: () {
         exitCompleter.complete(0);
       },
       onError: (dynamic error) {
         exitCompleter.complete(error is int ? error : 1);
-      }
+      },
     );
 
     // When terminating, close down the log reader.
@@ -74,7 +79,10 @@ class LogsCommand extends FlutterCommand {
     // Wait for the log reader to be finished.
     final int result = await exitCompleter.future;
     await subscription.cancel();
-    if (result != 0)
+    if (result != 0) {
       throwToolExit('Error listening to $logReader logs.');
+    }
+
+    return null;
   }
 }

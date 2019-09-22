@@ -9,11 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'semantics_tester.dart';
 
-List<String> callLog = <String>[];
-
 void main() {
-  testWidgets('can call markNeedsSemanticsUpdate(onlyChanges: true) followed by markNeedsSemanticsUpdate(onlyChanges: false)', (WidgetTester tester) async {
-    final SemanticsTester semantics = new SemanticsTester(tester);
+  testWidgets('can cease to be semantics boundary after markNeedsSemanticsUpdate() has already been called once', (WidgetTester tester) async {
+    final SemanticsTester semantics = SemanticsTester(tester);
 
     await tester.pumpWidget(
       buildTestWidgets(
@@ -22,8 +20,6 @@ void main() {
         isSemanticsBoundary: true,
       ),
     );
-
-    callLog.clear();
 
     // The following should not trigger an assert.
     await tester.pumpWidget(
@@ -34,29 +30,27 @@ void main() {
       ),
     );
 
-    expect(callLog, <String>['markNeedsSemanticsUpdate(onlyChanges: true)', 'markNeedsSemanticsUpdate(onlyChanges: false)']);
-
     semantics.dispose();
   });
 }
 
-Widget buildTestWidgets({bool excludeSemantics, String label, bool isSemanticsBoundary}) {
-  return new Directionality(
+Widget buildTestWidgets({ bool excludeSemantics, String label, bool isSemanticsBoundary }) {
+  return Directionality(
     textDirection: TextDirection.ltr,
-    child: new Semantics(
+    child: Semantics(
       label: 'container',
       container: true,
-      child: new ExcludeSemantics(
+      child: ExcludeSemantics(
         excluding: excludeSemantics,
-        child: new TestWidget(
+        child: TestWidget(
           label: label,
           isSemanticBoundary: isSemanticsBoundary,
-          child: new Column(
+          child: Column(
             children: <Widget>[
-              const Semantics(
+              Semantics(
                 label: 'child1',
               ),
-              const Semantics(
+              Semantics(
                 label: 'child2',
               ),
             ],
@@ -80,7 +74,7 @@ class TestWidget extends SingleChildRenderObjectWidget {
 
   @override
   RenderTest createRenderObject(BuildContext context) {
-    return new RenderTest()
+    return RenderTest()
       ..label = label
       ..isSemanticBoundary = isSemanticBoundary;
   }
@@ -109,22 +103,20 @@ class RenderTest extends RenderProxyBox {
 
   }
 
-  String _label;
+  String _label = '<>';
   set label(String value) {
     if (value == _label)
       return;
     _label = value;
-    markNeedsSemanticsUpdate(onlyLocalUpdates: true);
-    callLog.add('markNeedsSemanticsUpdate(onlyChanges: true)');
+    markNeedsSemanticsUpdate();
   }
 
 
-  bool _isSemanticBoundary;
+  bool _isSemanticBoundary = false;
   set isSemanticBoundary(bool value) {
     if (_isSemanticBoundary == value)
       return;
     _isSemanticBoundary = value;
-    markNeedsSemanticsUpdate(onlyLocalUpdates: false);
-    callLog.add('markNeedsSemanticsUpdate(onlyChanges: false)');
+    markNeedsSemanticsUpdate();
   }
 }

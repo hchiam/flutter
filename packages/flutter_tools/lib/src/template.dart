@@ -4,13 +4,10 @@
 
 import 'package:mustache/mustache.dart' as mustache;
 
+import 'base/common.dart';
 import 'base/file_system.dart';
 import 'cache.dart';
 import 'globals.dart';
-
-const String _kTemplateExtension = '.tmpl';
-const String _kCopyTemplateExtension = '.copy.tmpl';
-final Pattern _kTemplateLanguageVariant = new RegExp(r'(\w+)-(\w+)\.tmpl.*');
 
 /// Expands templates in a directory to a destination. All files that must
 /// undergo template expansion should end with the '.tmpl' extension. All other
@@ -45,7 +42,7 @@ class Template {
       final String relativePath = fs.path.relative(entity.path,
           from: baseDir.absolute.path);
 
-      if (relativePath.contains(_kTemplateExtension)) {
+      if (relativePath.contains(templateExtension)) {
         // If '.tmpl' appears anywhere within the path of this entity, it is
         // is a candidate for rendering. This catches cases where the folder
         // itself is a template.
@@ -56,18 +53,32 @@ class Template {
 
   factory Template.fromName(String name) {
     // All named templates are placed in the 'templates' directory
-    final Directory templateDir = _templateDirectoryInPackage(name);
-    return new Template(templateDir, templateDir);
+    final Directory templateDir = templateDirectoryInPackage(name);
+    return Template(templateDir, templateDir);
   }
+
+  static const String templateExtension = '.tmpl';
+  static const String copyTemplateExtension = '.copy.tmpl';
+  final Pattern _kTemplateLanguageVariant = RegExp(r'(\w+)-(\w+)\.tmpl.*');
 
   Map<String /* relative */, String /* absolute source */> _templateFilePaths;
 
+  /// Render the template into [directory].
+  ///
+  /// May throw a [ToolExit] if the directory is not writable.
   int render(
     Directory destination,
     Map<String, dynamic> context, {
-    bool overwriteExisting: true,
+    bool overwriteExisting = true,
+    bool printStatusWhenWriting = true,
   }) {
-    destination.createSync(recursive: true);
+    try {
+      destination.createSync(recursive: true);
+    } on FileSystemException catch (err) {
+      printError(err.toString());
+      throwToolExit('Failed to flutter create at ${destination.path}.');
+      return 0;
+    }
     int fileCount = 0;
 
     /// Returns the resolved destination path corresponding to the specified
@@ -80,9 +91,20 @@ class Template {
       if (match != null) {
         final String platform = match.group(1);
         final String language = context['${platform}Language'];
-        if (language != match.group(2))
+        if (language != match.group(2)) {
           return null;
+        }
         relativeDestinationPath = relativeDestinationPath.replaceAll('$platform-$language.tmpl', platform);
+      }
+      // Only build a web project if explicitly asked.
+      final bool web = context['web'];
+      if (relativeDestinationPath.contains('web') && !web) {
+        return null;
+      }
+      // Only build a macOS project if explicitly asked.
+      final bool macOS = context['macos'];
+      if (relativeDestinationPath.startsWith('macos.tmpl') && !macOS) {
+        return null;
       }
       final String projectName = context['projectName'];
       final String androidIdentifier = context['androidIdentifier'];
@@ -91,24 +113,32 @@ class Template {
       final String pathSeparator = fs.path.separator;
       String finalDestinationPath = fs.path
         .join(destinationDirPath, relativeDestinationPath)
-        .replaceAll(_kCopyTemplateExtension, '')
-        .replaceAll(_kTemplateExtension, '');
+        .replaceAll(copyTemplateExtension, '')
+        .replaceAll(templateExtension, '');
 
       if (androidIdentifier != null) {
         finalDestinationPath = finalDestinationPath
             .replaceAll('androidIdentifier', androidIdentifier.replaceAll('.', pathSeparator));
       }
-      if (projectName != null)
+      if (projectName != null) {
         finalDestinationPath = finalDestinationPath.replaceAll('projectName', projectName);
-      if (pluginClass != null)
+      }
+      if (pluginClass != null) {
         finalDestinationPath = finalDestinationPath.replaceAll('pluginClass', pluginClass);
+      }
       return finalDestinationPath;
     }
 
     _templateFilePaths.forEach((String relativeDestinationPath, String absoluteSourcePath) {
-      final String finalDestinationPath = renderPath(relativeDestinationPath);
-      if (finalDestinationPath == null)
+      final bool withRootModule = context['withRootModule'] ?? false;
+      if (!withRootModule && absoluteSourcePath.contains('flutter_root')) {
         return;
+      }
+
+      final String finalDestinationPath = renderPath(relativeDestinationPath);
+      if (finalDestinationPath == null) {
+        return;
+      }
       final File finalDestinationFile = fs.file(finalDestinationPath);
       final String relativePathForLogging = fs.path.relative(finalDestinationFile.path);
 
@@ -116,15 +146,21 @@ class Template {
 
       if (finalDestinationFile.existsSync()) {
         if (overwriteExisting) {
-          finalDestinationFile.delete(recursive: true);
-          printStatus('  $relativePathForLogging (overwritten)');
+          finalDestinationFile.deleteSync(recursive: true);
+          if (printStatusWhenWriting) {
+            printStatus('  $relativePathForLogging (overwritten)');
+          }
         } else {
           // The file exists but we cannot overwrite it, move on.
-          printTrace('  $relativePathForLogging (existing - skipped)');
+          if (printStatusWhenWriting) {
+            printTrace('  $relativePathForLogging (existing - skipped)');
+          }
           return;
         }
       } else {
-        printTrace('  $relativePathForLogging');
+        if (printStatusWhenWriting) {
+          printStatus('  $relativePathForLogging (created)');
+        }
       }
 
       fileCount++;
@@ -132,11 +168,11 @@ class Template {
       finalDestinationFile.createSync(recursive: true);
       final File sourceFile = fs.file(absoluteSourcePath);
 
-      // Step 2: If the absolute paths ends with a 'copy.tmpl', this file does
+      // Step 2: If the absolute paths ends with a '.copy.tmpl', this file does
       //         not need mustache rendering but needs to be directly copied.
 
-      if (sourceFile.path.endsWith(_kCopyTemplateExtension)) {
-        finalDestinationFile.writeAsBytesSync(sourceFile.readAsBytesSync());
+      if (sourceFile.path.endsWith(copyTemplateExtension)) {
+        sourceFile.copySync(finalDestinationFile.path);
 
         return;
       }
@@ -144,9 +180,9 @@ class Template {
       // Step 3: If the absolute path ends with a '.tmpl', this file needs
       //         rendering via mustache.
 
-      if (sourceFile.path.endsWith(_kTemplateExtension)) {
+      if (sourceFile.path.endsWith(templateExtension)) {
         final String templateContents = sourceFile.readAsStringSync();
-        final String renderedContents = new mustache.Template(templateContents).renderString(context);
+        final String renderedContents = mustache.Template(templateContents).renderString(context);
 
         finalDestinationFile.writeAsStringSync(renderedContents);
 
@@ -163,7 +199,7 @@ class Template {
   }
 }
 
-Directory _templateDirectoryInPackage(String name) {
+Directory templateDirectoryInPackage(String name) {
   final String templatesDir = fs.path.join(Cache.flutterRoot,
       'packages', 'flutter_tools', 'templates');
   return fs.directory(fs.path.join(templatesDir, name));

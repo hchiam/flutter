@@ -6,10 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-const Size _kTestViewSize = const Size(800.0, 600.0);
+const Size _kTestViewSize = Size(800.0, 600.0);
 
 class OffscreenRenderView extends RenderView {
-  OffscreenRenderView() : super(configuration: const ViewConfiguration(size: _kTestViewSize));
+  OffscreenRenderView() : super(
+    configuration: const ViewConfiguration(size: _kTestViewSize),
+    window: WidgetsBinding.instance.window,
+  );
 
   @override
   void compositeFrame() {
@@ -20,19 +23,20 @@ class OffscreenRenderView extends RenderView {
 class OffscreenWidgetTree {
   OffscreenWidgetTree() {
     renderView.attach(pipelineOwner);
-    renderView.scheduleInitialFrame();
+    renderView.prepareInitialFrame();
+    pipelineOwner.requestVisualUpdate();
   }
 
-  final RenderView renderView = new OffscreenRenderView();
-  final BuildOwner buildOwner = new BuildOwner();
-  final PipelineOwner pipelineOwner = new PipelineOwner();
+  final RenderView renderView = OffscreenRenderView();
+  final BuildOwner buildOwner = BuildOwner();
+  final PipelineOwner pipelineOwner = PipelineOwner();
   RenderObjectToWidgetElement<RenderBox> root;
 
   void pumpWidget(Widget app) {
-    root = new RenderObjectToWidgetAdapter<RenderBox>(
+    root = RenderObjectToWidgetAdapter<RenderBox>(
       container: renderView,
       debugShortDescription: '[root]',
-      child: app
+      child: app,
     ).attachToRenderTree(buildOwner, root);
     pumpFrame();
   }
@@ -66,7 +70,7 @@ class TriggerableWidget extends StatefulWidget {
   final Trigger trigger;
   final Counter counter;
   @override
-  TriggerableState createState() => new TriggerableState();
+  TriggerableState createState() => TriggerableState();
 }
 
 class TriggerableState extends State<TriggerableWidget> {
@@ -92,27 +96,59 @@ class TriggerableState extends State<TriggerableWidget> {
   @override
   Widget build(BuildContext context) {
     widget.counter.count++;
-    return new Text('Bang $_count!', textDirection: TextDirection.ltr);
+    return Text('Bang $_count!', textDirection: TextDirection.ltr);
+  }
+}
+
+class TestFocusable extends StatefulWidget {
+  const TestFocusable({
+    Key key,
+    this.focusNode,
+    this.autofocus = true,
+  }) : super(key: key);
+
+  final bool autofocus;
+  final FocusNode focusNode;
+
+  @override
+  TestFocusableState createState() => TestFocusableState();
+}
+
+class TestFocusableState extends State<TestFocusable> {
+  bool _didAutofocus = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didAutofocus && widget.autofocus) {
+      _didAutofocus = true;
+      FocusScope.of(context).autofocus(widget.focusNode);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text('Test focus node', textDirection: TextDirection.ltr);
   }
 }
 
 void main() {
   testWidgets('no crosstalk between widget build owners', (WidgetTester tester) async {
-    final Trigger trigger1 = new Trigger();
-    final Counter counter1 = new Counter();
-    final Trigger trigger2 = new Trigger();
-    final Counter counter2 = new Counter();
-    final OffscreenWidgetTree tree = new OffscreenWidgetTree();
+    final Trigger trigger1 = Trigger();
+    final Counter counter1 = Counter();
+    final Trigger trigger2 = Trigger();
+    final Counter counter2 = Counter();
+    final OffscreenWidgetTree tree = OffscreenWidgetTree();
     // Both counts should start at zero
     expect(counter1.count, equals(0));
     expect(counter2.count, equals(0));
     // Lay out the "onscreen" in the default test binding
-    await tester.pumpWidget(new TriggerableWidget(trigger: trigger1, counter: counter1));
+    await tester.pumpWidget(TriggerableWidget(trigger: trigger1, counter: counter1));
     // Only the "onscreen" widget should have built
     expect(counter1.count, equals(1));
     expect(counter2.count, equals(0));
     // Lay out the "offscreen" in a separate tree
-    tree.pumpWidget(new TriggerableWidget(trigger: trigger2, counter: counter2));
+    tree.pumpWidget(TriggerableWidget(trigger: trigger2, counter: counter2));
     // Now both widgets should have built
     expect(counter1.count, equals(1));
     expect(counter2.count, equals(1));
@@ -146,4 +182,28 @@ void main() {
     expect(counter1.count, equals(3));
     expect(counter2.count, equals(3));
   });
+
+  testWidgets('no crosstalk between focus nodes', (WidgetTester tester) async {
+    final OffscreenWidgetTree tree = OffscreenWidgetTree();
+    final FocusNode onscreenFocus = FocusNode();
+    final FocusNode offscreenFocus = FocusNode();
+    await tester.pumpWidget(
+      TestFocusable(
+        focusNode: onscreenFocus,
+      ),
+    );
+    tree.pumpWidget(
+      TestFocusable(
+        focusNode: offscreenFocus,
+      ),
+    );
+
+    // Autofocus is delayed one frame.
+    await tester.pump();
+    tree.pumpFrame();
+
+    expect(onscreenFocus.hasFocus, isTrue);
+    expect(offscreenFocus.hasFocus, isTrue);
+  });
+
 }

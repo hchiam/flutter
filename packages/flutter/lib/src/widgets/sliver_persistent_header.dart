@@ -93,8 +93,8 @@ class SliverPersistentHeader extends StatelessWidget {
   const SliverPersistentHeader({
     Key key,
     @required this.delegate,
-    this.pinned: false,
-    this.floating: false,
+    this.pinned = false,
+    this.floating = false,
   }) : assert(delegate != null),
        assert(pinned != null),
        assert(floating != null),
@@ -131,26 +131,25 @@ class SliverPersistentHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (floating && pinned)
-      return new _SliverFloatingPinnedPersistentHeader(delegate: delegate);
+      return _SliverFloatingPinnedPersistentHeader(delegate: delegate);
     if (pinned)
-      return new _SliverPinnedPersistentHeader(delegate: delegate);
+      return _SliverPinnedPersistentHeader(delegate: delegate);
     if (floating)
-      return new _SliverFloatingPersistentHeader(delegate: delegate);
-    return new _SliverScrollingPersistentHeader(delegate: delegate);
+      return _SliverFloatingPersistentHeader(delegate: delegate);
+    return _SliverScrollingPersistentHeader(delegate: delegate);
   }
 
   @override
-  void debugFillProperties(DiagnosticPropertiesBuilder description) {
-    super.debugFillProperties(description);
-    description.add(new DiagnosticsProperty<SliverPersistentHeaderDelegate>('delegate', delegate));
-    final List<String> flags = <String>[];
-    if (pinned)
-      flags.add('pinned');
-    if (floating)
-      flags.add('floating');
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<SliverPersistentHeaderDelegate>('delegate', delegate));
+    final List<String> flags = <String>[
+      if (pinned) 'pinned',
+      if (floating) 'floating',
+    ];
     if (flags.isEmpty)
       flags.add('normal');
-    description.add(new IterableProperty<String>('mode', flags));
+    properties.add(IterableProperty<String>('mode', flags));
   }
 }
 
@@ -188,6 +187,7 @@ class _SliverPersistentHeaderElement extends RenderObjectElement {
 
   @override
   void performRebuild() {
+    super.performRebuild();
     renderObject.triggerRebuild();
   }
 
@@ -206,13 +206,13 @@ class _SliverPersistentHeaderElement extends RenderObjectElement {
   }
 
   @override
-  void insertChildRenderObject(covariant RenderObject child, Null slot) {
+  void insertChildRenderObject(covariant RenderObject child, dynamic slot) {
     assert(renderObject.debugValidateChild(child));
     renderObject.child = child;
   }
 
   @override
-  void moveChildRenderObject(covariant RenderObject child, Null slot) {
+  void moveChildRenderObject(covariant RenderObject child, dynamic slot) {
     assert(false);
   }
 
@@ -238,7 +238,7 @@ abstract class _SliverPersistentHeaderRenderObjectWidget extends RenderObjectWid
   final SliverPersistentHeaderDelegate delegate;
 
   @override
-  _SliverPersistentHeaderElement createElement() => new _SliverPersistentHeaderElement(this);
+  _SliverPersistentHeaderElement createElement() => _SliverPersistentHeaderElement(this);
 
   @override
   _RenderSliverPersistentHeaderForWidgetsMixin createRenderObject(BuildContext context);
@@ -246,15 +246,11 @@ abstract class _SliverPersistentHeaderRenderObjectWidget extends RenderObjectWid
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder description) {
     super.debugFillProperties(description);
-    description.add(new DiagnosticsProperty<SliverPersistentHeaderDelegate>('delegate', delegate));
+    description.add(DiagnosticsProperty<SliverPersistentHeaderDelegate>('delegate', delegate));
   }
 }
 
-abstract class _RenderSliverPersistentHeaderForWidgetsMixin extends RenderSliverPersistentHeader {
-  // This class is intended to be used as a mixin, and should not be
-  // extended directly.
-  factory _RenderSliverPersistentHeaderForWidgetsMixin._() => null;
-
+mixin _RenderSliverPersistentHeaderForWidgetsMixin on RenderSliverPersistentHeader {
   _SliverPersistentHeaderElement _element;
 
   @override
@@ -283,14 +279,11 @@ class _SliverScrollingPersistentHeader extends _SliverPersistentHeaderRenderObje
 
   @override
   _RenderSliverPersistentHeaderForWidgetsMixin createRenderObject(BuildContext context) {
-    return new _RenderSliverScrollingPersistentHeaderForWidgets();
+    return _RenderSliverScrollingPersistentHeaderForWidgets();
   }
 }
 
-// This class exists to work around https://github.com/dart-lang/sdk/issues/15101
-abstract class _RenderSliverScrollingPersistentHeader extends RenderSliverScrollingPersistentHeader { }
-
-class _RenderSliverScrollingPersistentHeaderForWidgets extends _RenderSliverScrollingPersistentHeader
+class _RenderSliverScrollingPersistentHeaderForWidgets extends RenderSliverScrollingPersistentHeader
   with _RenderSliverPersistentHeaderForWidgetsMixin { }
 
 class _SliverPinnedPersistentHeader extends _SliverPersistentHeaderRenderObjectWidget {
@@ -301,14 +294,11 @@ class _SliverPinnedPersistentHeader extends _SliverPersistentHeaderRenderObjectW
 
   @override
   _RenderSliverPersistentHeaderForWidgetsMixin createRenderObject(BuildContext context) {
-    return new _RenderSliverPinnedPersistentHeaderForWidgets();
+    return _RenderSliverPinnedPersistentHeaderForWidgets();
   }
 }
 
-// This class exists to work around https://github.com/dart-lang/sdk/issues/15101
-abstract class _RenderSliverPinnedPersistentHeader extends RenderSliverPinnedPersistentHeader { }
-
-class _RenderSliverPinnedPersistentHeaderForWidgets extends _RenderSliverPinnedPersistentHeader with _RenderSliverPersistentHeaderForWidgetsMixin { }
+class _RenderSliverPinnedPersistentHeaderForWidgets extends RenderSliverPinnedPersistentHeader with _RenderSliverPersistentHeaderForWidgetsMixin { }
 
 class _SliverFloatingPersistentHeader extends _SliverPersistentHeaderRenderObjectWidget {
   const _SliverFloatingPersistentHeader({
@@ -318,10 +308,7 @@ class _SliverFloatingPersistentHeader extends _SliverPersistentHeaderRenderObjec
 
   @override
   _RenderSliverPersistentHeaderForWidgetsMixin createRenderObject(BuildContext context) {
-    // Not passing this snapConfiguration as a constructor parameter to avoid the
-    // additional layers added due to https://github.com/dart-lang/sdk/issues/15101
-    return new _RenderSliverFloatingPersistentHeaderForWidgets()
-      ..snapConfiguration = delegate.snapConfiguration;
+    return _RenderSliverFloatingPersistentHeaderForWidgets(snapConfiguration: delegate.snapConfiguration);
   }
 
   @override
@@ -330,10 +317,12 @@ class _SliverFloatingPersistentHeader extends _SliverPersistentHeaderRenderObjec
   }
 }
 
-// This class exists to work around https://github.com/dart-lang/sdk/issues/15101
-abstract class _RenderSliverFloatingPinnedPersistentHeader extends RenderSliverFloatingPinnedPersistentHeader { }
-
-class _RenderSliverFloatingPinnedPersistentHeaderForWidgets extends _RenderSliverFloatingPinnedPersistentHeader with _RenderSliverPersistentHeaderForWidgetsMixin { }
+class _RenderSliverFloatingPinnedPersistentHeaderForWidgets extends RenderSliverFloatingPinnedPersistentHeader with _RenderSliverPersistentHeaderForWidgetsMixin {
+  _RenderSliverFloatingPinnedPersistentHeaderForWidgets({
+    RenderBox child,
+    FloatingHeaderSnapConfiguration snapConfiguration,
+  }) : super(child: child, snapConfiguration: snapConfiguration);
+}
 
 class _SliverFloatingPinnedPersistentHeader extends _SliverPersistentHeaderRenderObjectWidget {
   const _SliverFloatingPinnedPersistentHeader({
@@ -343,10 +332,7 @@ class _SliverFloatingPinnedPersistentHeader extends _SliverPersistentHeaderRende
 
   @override
   _RenderSliverPersistentHeaderForWidgetsMixin createRenderObject(BuildContext context) {
-    // Not passing this snapConfiguration as a constructor parameter to avoid the
-    // additional layers added due to https://github.com/dart-lang/sdk/issues/15101
-    return new _RenderSliverFloatingPinnedPersistentHeaderForWidgets()
-      ..snapConfiguration = delegate.snapConfiguration;
+    return _RenderSliverFloatingPinnedPersistentHeaderForWidgets(snapConfiguration: delegate.snapConfiguration);
   }
 
   @override
@@ -355,7 +341,9 @@ class _SliverFloatingPinnedPersistentHeader extends _SliverPersistentHeaderRende
   }
 }
 
-// This class exists to work around https://github.com/dart-lang/sdk/issues/15101
-abstract class _RenderSliverFloatingPersistentHeader extends RenderSliverFloatingPersistentHeader { }
-
-class _RenderSliverFloatingPersistentHeaderForWidgets extends _RenderSliverFloatingPersistentHeader with _RenderSliverPersistentHeaderForWidgetsMixin { }
+class _RenderSliverFloatingPersistentHeaderForWidgets extends RenderSliverFloatingPersistentHeader with _RenderSliverPersistentHeaderForWidgetsMixin {
+  _RenderSliverFloatingPersistentHeaderForWidgets({
+    RenderBox child,
+    FloatingHeaderSnapConfiguration snapConfiguration,
+  }) : super(child: child, snapConfiguration: snapConfiguration);
+}

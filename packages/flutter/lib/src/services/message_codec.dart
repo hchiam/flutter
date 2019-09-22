@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 import 'dart:typed_data';
-import 'dart:ui' show hashValues;
 
 import 'package:flutter/foundation.dart';
 
 import 'platform_channel.dart';
+
+export 'dart:typed_data' show ByteData;
 
 /// A message encoding/decoding mechanism.
 ///
@@ -16,8 +17,8 @@ import 'platform_channel.dart';
 ///
 /// See also:
 ///
-/// * [BasicMessageChannel], which use [MessageCodec]s for communication
-///   between Flutter and platform plugins.
+///  * [BasicMessageChannel], which use [MessageCodec]s for communication
+///    between Flutter and platform plugins.
 abstract class MessageCodec<T> {
   /// Encodes the specified [message] in binary.
   ///
@@ -47,48 +48,6 @@ class MethodCall {
   final dynamic arguments;
 
   @override
-  bool operator == (dynamic other) {
-    if (identical(this, other))
-      return true;
-    if (runtimeType != other.runtimeType)
-      return false;
-    return method == other.method && _deepEquals(arguments, other.arguments);
-  }
-
-  @override
-  int get hashCode => hashValues(method, arguments);
-
-  bool _deepEquals(dynamic a, dynamic b) {
-    if (a == b)
-      return true;
-    if (a is List)
-      return b is List && _deepEqualsList(a, b);
-    if (a is Map)
-      return b is Map && _deepEqualsMap(a, b);
-    return false;
-  }
-
-  bool _deepEqualsList(List<dynamic> a, List<dynamic> b) {
-    if (a.length != b.length)
-      return false;
-    for (int i = 0; i < a.length; i++) {
-      if (!_deepEquals(a[i], b[i]))
-        return false;
-    }
-    return true;
-  }
-
-  bool _deepEqualsMap(Map<dynamic, dynamic> a, Map<dynamic, dynamic> b) {
-    if (a.length != b.length)
-      return false;
-    for (dynamic key in a.keys) {
-      if (!b.containsKey(key) || !_deepEquals(a[key], b[key]))
-        return false;
-    }
-    return true;
-  }
-
-  @override
   String toString() => '$runtimeType($method, $arguments)';
 }
 
@@ -98,10 +57,10 @@ class MethodCall {
 ///
 /// See also:
 ///
-/// * [MethodChannel], which use [MethodCodec]s for communication
-///   between Flutter and platform plugins.
-/// * [EventChannel], which use [MethodCodec]s for communication
-///   between Flutter and platform plugins.
+///  * [MethodChannel], which use [MethodCodec]s for communication
+///    between Flutter and platform plugins.
+///  * [EventChannel], which use [MethodCodec]s for communication
+///    between Flutter and platform plugins.
 abstract class MethodCodec {
   /// Encodes the specified [methodCall] into binary.
   ByteData encodeMethodCall(MethodCall methodCall);
@@ -122,7 +81,7 @@ abstract class MethodCodec {
   ///
   /// The specified error [code], human-readable error [message], and error
   /// [details] correspond to the fields of [PlatformException].
-  ByteData encodeErrorEnvelope({@required String code, String message, dynamic details});
+  ByteData encodeErrorEnvelope({ @required String code, String message, dynamic details });
 }
 
 
@@ -131,14 +90,14 @@ abstract class MethodCodec {
 ///
 /// See also:
 ///
-/// * [MethodCodec], which throws a [PlatformException], if a received result
-///   envelope represents an error.
-/// * [MethodChannel.invokeMethod], which completes the returned future
-///   with a [PlatformException], if invoking the platform plugin method
-///   results in an error envelope.
-/// * [EventChannel.receiveBroadcastStream], which emits
-///   [PlatformException]s as error events, whenever an event received from the
-///   platform plugin is wrapped in an error envelope.
+///  * [MethodCodec], which throws a [PlatformException], if a received result
+///    envelope represents an error.
+///  * [MethodChannel.invokeMethod], which completes the returned future
+///    with a [PlatformException], if invoking the platform plugin method
+///    results in an error envelope.
+///  * [EventChannel.receiveBroadcastStream], which emits
+///    [PlatformException]s as error events, whenever an event received from the
+///    platform plugin is wrapped in an error envelope.
 class PlatformException implements Exception {
   /// Creates a [PlatformException] with the specified error [code] and optional
   /// [message], and with the optional error [details] which must be a valid
@@ -167,11 +126,11 @@ class PlatformException implements Exception {
 ///
 /// See also:
 ///
-/// * [MethodChannel.invokeMethod], which completes the returned future
-///   with a [MissingPluginException], if no plugin handler for the method call
-///   was found.
-/// * [OptionalMethodChannel.invokeMethod], which completes the returned future
-///   with null, if no plugin handler for the method call was found.
+///  * [MethodChannel.invokeMethod], which completes the returned future
+///    with a [MissingPluginException], if no plugin handler for the method call
+///    was found.
+///  * [OptionalMethodChannel.invokeMethod], which completes the returned future
+///    with null, if no plugin handler for the method call was found.
 class MissingPluginException implements Exception {
   /// Creates a [MissingPluginException] with an optional human-readable
   /// error message.

@@ -5,16 +5,17 @@
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import 'basic_types.dart';
 import 'border_radius.dart';
 import 'box_border.dart';
 import 'box_shadow.dart';
+import 'colors.dart';
 import 'decoration.dart';
+import 'decoration_image.dart';
 import 'edge_insets.dart';
 import 'gradient.dart';
-import 'images.dart';
+import 'image_provider.dart';
 
 /// An immutable description of how to paint a box.
 ///
@@ -32,26 +33,37 @@ import 'images.dart';
 ///
 /// The [border] paints over the body; the [boxShadow], naturally, paints below it.
 ///
-/// ## Sample code
+/// {@tool sample}
 ///
-/// The following example uses the [Container] widget from the widgets layer to
-/// draw an image with a border:
+/// The following applies a [BoxDecoration] to a [Container] widget to draw an
+/// [image] of an owl with a thick black [border] and rounded corners.
+///
+/// ![](https://flutter.github.io/assets-for-api-docs/assets/painting/box_decoration.png)
 ///
 /// ```dart
-/// new Container(
-///   decoration: new BoxDecoration(
+/// Container(
+///   decoration: BoxDecoration(
 ///     color: const Color(0xff7c94b6),
-///     image: new DecorationImage(
-///       image: new ExactAssetImage('images/flowers.jpeg'),
+///     image: const DecorationImage(
+///       image: NetworkImage('https:///flutter.github.io/assets-for-api-docs/assets/widgets/owl-2.jpg'),
 ///       fit: BoxFit.cover,
 ///     ),
-///     border: new Border.all(
+///     border: Border.all(
 ///       color: Colors.black,
-///       width: 8.0,
+///       width: 8,
 ///     ),
+///     borderRadius: BorderRadius.circular(12),
 ///   ),
 /// )
 /// ```
+/// {@end-tool}
+///
+/// {@template flutter.painting.boxDecoration.clip}
+/// The [shape] or the [borderRadius] won't clip the children of the
+/// decorated [Container]. If the clip is required, insert a clip widget
+/// (e.g., [ClipRect], [ClipRRect], [ClipPath]) as the child of the [Container].
+/// Be aware that clipping may be costly in terms of performance.
+/// {@endtemplate}
 ///
 /// See also:
 ///
@@ -66,10 +78,11 @@ class BoxDecoration extends Decoration {
   /// * If [image] is null, this decoration does not paint a background image.
   /// * If [border] is null, this decoration does not paint a border.
   /// * If [borderRadius] is null, this decoration uses more efficient background
-  ///   painting commands. The [borderRadius] argument must be be null if [shape] is
+  ///   painting commands. The [borderRadius] argument must be null if [shape] is
   ///   [BoxShape.circle].
   /// * If [boxShadow] is null, this decoration does not paint a shadow.
   /// * If [gradient] is null, this decoration does not paint gradients.
+  /// * If [backgroundBlendMode] is null, this decoration paints with [BlendMode.srcOver]
   ///
   /// The [shape] argument must not be null.
   const BoxDecoration({
@@ -79,13 +92,43 @@ class BoxDecoration extends Decoration {
     this.borderRadius,
     this.boxShadow,
     this.gradient,
-    this.shape: BoxShape.rectangle,
-  }) : assert(shape != null);
+    this.backgroundBlendMode,
+    this.shape = BoxShape.rectangle,
+  }) : assert(shape != null),
+       assert(
+         backgroundBlendMode == null || color != null || gradient != null,
+         'backgroundBlendMode applies to BoxDecoration\'s background color or '
+         'gradient, but no color or gradient was provided.'
+       );
+
+  /// Creates a copy of this object but with the given fields replaced with the
+  /// new values.
+  BoxDecoration copyWith({
+    Color color,
+    DecorationImage image,
+    BoxBorder border,
+    BorderRadiusGeometry borderRadius,
+    List<BoxShadow> boxShadow,
+    Gradient gradient,
+    BlendMode backgroundBlendMode,
+    BoxShape shape,
+  }) {
+    return BoxDecoration(
+      color: color ?? this.color,
+      image: image ?? this.image,
+      border: border ?? this.border,
+      borderRadius: borderRadius ?? this.borderRadius,
+      boxShadow: boxShadow ?? this.boxShadow,
+      gradient: gradient ?? this.gradient,
+      backgroundBlendMode: backgroundBlendMode ?? this.backgroundBlendMode,
+      shape: shape ?? this.shape,
+    );
+  }
 
   @override
   bool debugAssertIsValid() {
     assert(shape != BoxShape.circle ||
-           borderRadius == null); // Can't have a border radius if you're a circle.
+          borderRadius == null); // Can't have a border radius if you're a circle.
     return super.debugAssertIsValid();
   }
 
@@ -122,11 +165,19 @@ class BoxDecoration extends Decoration {
   ///
   /// Applies only to boxes with rectangular shapes; ignored if [shape] is not
   /// [BoxShape.rectangle].
+  ///
+  /// {@macro flutter.painting.boxDecoration.clip}
   final BorderRadiusGeometry borderRadius;
 
   /// A list of shadows cast by this box behind the box.
   ///
   /// The shadow follows the [shape] of the box.
+  ///
+  /// See also:
+  ///
+  ///  * [kElevationToShadow], for some predefined shadows used in Material
+  ///    Design.
+  ///  * [PhysicalModel], a widget for showing shadows.
   final List<BoxShadow> boxShadow;
 
   /// A gradient to use when filling the box.
@@ -135,6 +186,14 @@ class BoxDecoration extends Decoration {
   ///
   /// The [gradient] is drawn under the [image].
   final Gradient gradient;
+
+  /// The blend mode applied to the [color] or [gradient] background of the box.
+  ///
+  /// If no [backgroundBlendMode] is provided then the default painting blend
+  /// mode is used.
+  ///
+  /// If no [color] or [gradient] is provided then the blend mode has no impact.
+  final BlendMode backgroundBlendMode;
 
   /// The shape to fill the background [color], [gradient], and [image] into and
   /// to cast as the [boxShadow].
@@ -147,6 +206,8 @@ class BoxDecoration extends Decoration {
   /// different [ShapeBorder]s; in particular, [CircleBorder] instead of
   /// [BoxShape.circle] and [RoundedRectangleBorder] instead of
   /// [BoxShape.rectangle].
+  ///
+  /// {@macro flutter.painting.boxDecoration.clip}
   final BoxShape shape;
 
   @override
@@ -154,7 +215,7 @@ class BoxDecoration extends Decoration {
 
   /// Returns a new box decoration that is scaled by the given factor.
   BoxDecoration scale(double factor) {
-    return new BoxDecoration(
+    return BoxDecoration(
       color: Color.lerp(null, color, factor),
       image: image, // TODO(ianh): fade the image from transparent
       border: BoxBorder.lerp(null, border, factor),
@@ -200,6 +261,8 @@ class BoxDecoration extends Decoration {
   /// unmodified. Otherwise, the values are computed by interpolating the
   /// properties appropriately.
   ///
+  /// {@macro dart.ui.shadow.lerp}
+  ///
   /// See also:
   ///
   ///  * [Decoration.lerp], which can interpolate between any two types of
@@ -208,6 +271,7 @@ class BoxDecoration extends Decoration {
   ///    and which use [BoxDecoration.lerp] when interpolating two
   ///    [BoxDecoration]s or a [BoxDecoration] to or from null.
   static BoxDecoration lerp(BoxDecoration a, BoxDecoration b, double t) {
+    assert(t != null);
     if (a == null && b == null)
       return null;
     if (a == null)
@@ -218,7 +282,7 @@ class BoxDecoration extends Decoration {
       return a;
     if (t == 1.0)
       return b;
-    return new BoxDecoration(
+    return BoxDecoration(
       color: Color.lerp(a.color, b.color, t),
       image: t < 0.5 ? a.image : b.image, // TODO(ianh): cross-fade the image
       border: BoxBorder.lerp(a.border, b.border, t),
@@ -265,13 +329,13 @@ class BoxDecoration extends Decoration {
       ..defaultDiagnosticsTreeStyle = DiagnosticsTreeStyle.whitespace
       ..emptyBodyDescription = '<no decorations specified>';
 
-    properties.add(new DiagnosticsProperty<Color>('color', color, defaultValue: null));
-    properties.add(new DiagnosticsProperty<DecorationImage>('image', image, defaultValue: null));
-    properties.add(new DiagnosticsProperty<BoxBorder>('border', border, defaultValue: null));
-    properties.add(new DiagnosticsProperty<BorderRadiusGeometry>('borderRadius', borderRadius, defaultValue: null));
-    properties.add(new IterableProperty<BoxShadow>('boxShadow', boxShadow, defaultValue: null, style: DiagnosticsTreeStyle.whitespace));
-    properties.add(new DiagnosticsProperty<Gradient>('gradient', gradient, defaultValue: null));
-    properties.add(new EnumProperty<BoxShape>('shape', shape, defaultValue: BoxShape.rectangle));
+    properties.add(ColorProperty('color', color, defaultValue: null));
+    properties.add(DiagnosticsProperty<DecorationImage>('image', image, defaultValue: null));
+    properties.add(DiagnosticsProperty<BoxBorder>('border', border, defaultValue: null));
+    properties.add(DiagnosticsProperty<BorderRadiusGeometry>('borderRadius', borderRadius, defaultValue: null));
+    properties.add(IterableProperty<BoxShadow>('boxShadow', boxShadow, defaultValue: null, style: DiagnosticsTreeStyle.whitespace));
+    properties.add(DiagnosticsProperty<Gradient>('gradient', gradient, defaultValue: null));
+    properties.add(EnumProperty<BoxShape>('shape', shape, defaultValue: BoxShape.rectangle));
   }
 
   @override
@@ -296,9 +360,9 @@ class BoxDecoration extends Decoration {
   }
 
   @override
-  _BoxDecorationPainter createBoxPainter([VoidCallback onChanged]) {
+  _BoxDecorationPainter createBoxPainter([ VoidCallback onChanged ]) {
     assert(onChanged != null || image == null);
-    return new _BoxDecorationPainter(this, onChanged);
+    return _BoxDecorationPainter(this, onChanged);
   }
 }
 
@@ -312,17 +376,19 @@ class _BoxDecorationPainter extends BoxPainter {
 
   Paint _cachedBackgroundPaint;
   Rect _rectForCachedBackgroundPaint;
-  Paint _getBackgroundPaint(Rect rect) {
+  Paint _getBackgroundPaint(Rect rect, TextDirection textDirection) {
     assert(rect != null);
     assert(_decoration.gradient != null || _rectForCachedBackgroundPaint == null);
 
     if (_cachedBackgroundPaint == null ||
         (_decoration.gradient != null && _rectForCachedBackgroundPaint != rect)) {
-      final Paint paint = new Paint();
+      final Paint paint = Paint();
+      if (_decoration.backgroundBlendMode != null)
+        paint.blendMode = _decoration.backgroundBlendMode;
       if (_decoration.color != null)
         paint.color = _decoration.color;
       if (_decoration.gradient != null) {
-        paint.shader = _decoration.gradient.createShader(rect);
+        paint.shader = _decoration.gradient.createShader(rect, textDirection: textDirection);
         _rectForCachedBackgroundPaint = rect;
       }
       _cachedBackgroundPaint = paint;
@@ -353,9 +419,7 @@ class _BoxDecorationPainter extends BoxPainter {
     if (_decoration.boxShadow == null)
       return;
     for (BoxShadow boxShadow in _decoration.boxShadow) {
-      final Paint paint = new Paint()
-        ..color = boxShadow.color
-        ..maskFilter = new MaskFilter.blur(BlurStyle.normal, boxShadow.blurSigma);
+      final Paint paint = boxShadow.toPaint();
       final Rect bounds = rect.shift(boxShadow.offset).inflate(boxShadow.spreadRadius);
       _paintBox(canvas, bounds, paint, textDirection);
     }
@@ -363,7 +427,7 @@ class _BoxDecorationPainter extends BoxPainter {
 
   void _paintBackgroundColor(Canvas canvas, Rect rect, TextDirection textDirection) {
     if (_decoration.color != null || _decoration.gradient != null)
-      _paintBox(canvas, rect, _getBackgroundPaint(rect), textDirection);
+      _paintBox(canvas, rect, _getBackgroundPaint(rect, textDirection), textDirection);
   }
 
   DecorationImagePainter _imagePainter;
@@ -374,11 +438,11 @@ class _BoxDecorationPainter extends BoxPainter {
     Path clipPath;
     switch (_decoration.shape) {
       case BoxShape.circle:
-        clipPath = new Path()..addOval(rect);
+        clipPath = Path()..addOval(rect);
         break;
       case BoxShape.rectangle:
         if (_decoration.borderRadius != null)
-          clipPath = new Path()..addRRect(_decoration.borderRadius.resolve(configuration.textDirection).toRRect(rect));
+          clipPath = Path()..addRRect(_decoration.borderRadius.resolve(configuration.textDirection).toRRect(rect));
         break;
     }
     _imagePainter.paint(canvas, rect, clipPath, configuration);
@@ -407,5 +471,10 @@ class _BoxDecorationPainter extends BoxPainter {
       borderRadius: _decoration.borderRadius,
       textDirection: configuration.textDirection,
     );
+  }
+
+  @override
+  String toString() {
+    return 'BoxPainter for $_decoration';
   }
 }

@@ -33,10 +33,11 @@ void main() {
       DeviceOrientation.portraitUp,
     ]);
 
-    expect(log, equals(<MethodCall>[new MethodCall(
+    expect(log, hasLength(1));
+    expect(log.single, isMethodCall(
       'SystemChrome.setPreferredOrientations',
-      <String>['DeviceOrientation.portraitUp'],
-    )]));
+      arguments: <String>['DeviceOrientation.portraitUp'],
+    ));
   });
 
   test('setApplicationSwitcherDescription control test', () async {
@@ -50,16 +51,17 @@ void main() {
       const ApplicationSwitcherDescription(label: 'Example label', primaryColor: 0xFF00FF00)
     );
 
-    expect(log, equals(<MethodCall>[new MethodCall(
+    expect(log, hasLength(1));
+    expect(log.single, isMethodCall(
       'SystemChrome.setApplicationSwitcherDescription',
-      <String, dynamic>{'label':'Example label','primaryColor':4278255360}
-    )]));
+      arguments: <String, dynamic>{'label': 'Example label', 'primaryColor': 4278255360},
+    ));
   });
 
   test('setApplicationSwitcherDescription missing plugin', () async {
     final List<ByteData> log = <ByteData>[];
 
-    BinaryMessages.setMockMessageHandler('flutter/platform', (ByteData message) {
+    ServicesBinding.instance.defaultBinaryMessenger.setMockMessageHandler('flutter/platform', (ByteData message) {
       log.add(message);
       return null;
     });
@@ -80,9 +82,10 @@ void main() {
 
     await SystemChrome.setEnabledSystemUIOverlays(<SystemUiOverlay>[SystemUiOverlay.top]);
 
-    expect(log, equals(<MethodCall>[new MethodCall(
+    expect(log, hasLength(1));
+    expect(log.single, isMethodCall(
       'SystemChrome.setEnabledSystemUIOverlays',
-      <String>['SystemUiOverlay.top'],
-    )]));
+      arguments: <String>['SystemUiOverlay.top'],
+    ));
   });
 }

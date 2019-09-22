@@ -4,18 +4,18 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:test/test.dart';
+import '../flutter_test_alternative.dart';
 
 import 'rendering_tester.dart';
 
 
 void main() {
   test('only send semantics update if semantics have changed', () {
-    final TestRender testRender = new TestRender()
+    final TestRender testRender = TestRender()
       ..label = 'hello'
       ..textDirection = TextDirection.ltr;
 
-    final RenderObject tree = new RenderConstrainedBox(
+    final RenderObject tree = RenderConstrainedBox(
       additionalConstraints: const BoxConstraints.tightFor(height: 20.0, width: 20.0),
       child: testRender,
     );
@@ -30,7 +30,7 @@ void main() {
 
     // Initial render does semantics.
     expect(semanticsUpdateCount, 1);
-    expect(testRender.describeSemanticsConfigurationCallCount, isNot(0));
+    expect(testRender.describeSemanticsConfigurationCallCount, isPositive);
 
     testRender.describeSemanticsConfigurationCallCount = 0;
     semanticsUpdateCount = 0;
@@ -41,7 +41,7 @@ void main() {
 
     // Object is asked for semantics, but no update is sent.
     expect(semanticsUpdateCount, 0);
-    expect(testRender.describeSemanticsConfigurationCallCount, 1);
+    expect(testRender.describeSemanticsConfigurationCallCount, isPositive);
 
     testRender.describeSemanticsConfigurationCallCount = 0;
     semanticsUpdateCount = 0;
@@ -53,7 +53,7 @@ void main() {
 
     // Object is asked for semantics, and update is sent.
     expect(semanticsUpdateCount, 1);
-    expect(testRender.describeSemanticsConfigurationCallCount, 1);
+    expect(testRender.describeSemanticsConfigurationCallCount, isPositive);
 
     semanticsHandle.dispose();
   });

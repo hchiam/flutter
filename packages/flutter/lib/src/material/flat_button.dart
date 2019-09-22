@@ -6,12 +6,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button.dart';
+import 'button_theme.dart';
+import 'material_button.dart';
 import 'theme.dart';
+import 'theme_data.dart';
 
 /// A material design "flat button".
 ///
-/// A flat button is a section printed on a [Material] widget that reacts to
-/// touches by filling with color.
+/// A flat button is a text label displayed on a (zero elevation) [Material]
+/// widget that reacts to touches by filling with color.
 ///
 /// Use flat buttons on toolbars, in dialogs, or inline with other content but
 /// offset from that content with padding so that the button's presence is
@@ -32,134 +35,237 @@ import 'theme.dart';
 /// trying to change the button's [color] and it is not having any effect, check
 /// that you are passing a non-null [onPressed] handler.
 ///
-/// Requires one of its ancestors to be a [Material] widget.
+/// Flat buttons have a minimum size of 88.0 by 36.0 which can be overridden
+/// with [ButtonTheme].
 ///
-/// Flat buttons will expand to fit the child widget, if necessary.
+/// The [clipBehavior] argument must not be null.
+///
+/// {@tool sample}
+///
+/// This example shows a simple [FlatButton].
+///
+/// ![A simple FlatButton](https://flutter.github.io/assets-for-api-docs/assets/material/flat_button.png)
+///
+/// ```dart
+/// FlatButton(
+///   onPressed: () {
+///     /*...*/
+///   },
+///   child: Text(
+///     "Flat Button",
+///   ),
+/// )
+/// ```
+/// {@end-tool}
+///
+/// {@tool sample}
+///
+/// This example shows a [FlatButton] that is normally white-on-blue,
+/// with splashes rendered in a different shade of blue.
+/// It turns black-on-grey when disabled.
+/// The button has 8px of padding on each side, and the text is 20px high.
+///
+/// ![A FlatButton with white text on a blue background](https://flutter.github.io/assets-for-api-docs/assets/material/flat_button_properties.png)
+///
+/// ```dart
+/// FlatButton(
+///   color: Colors.blue,
+///   textColor: Colors.white,
+///   disabledColor: Colors.grey,
+///   disabledTextColor: Colors.black,
+///   padding: EdgeInsets.all(8.0),
+///   splashColor: Colors.blueAccent,
+///   onPressed: () {
+///     /*...*/
+///   },
+///   child: Text(
+///     "Flat Button",
+///     style: TextStyle(fontSize: 20.0),
+///   ),
+/// )
+/// ```
+/// {@end-tool}
 ///
 /// See also:
 ///
-///  * [RaisedButton], which is a button that hovers above the containing
-///    material.
+///  * [RaisedButton], a filled button whose material elevates when pressed.
 ///  * [DropdownButton], which offers the user a choice of a number of options.
 ///  * [SimpleDialogOption], which is used in [SimpleDialog]s.
 ///  * [IconButton], to create buttons that just contain icons.
 ///  * [InkWell], which implements the ink splash part of a flat button.
-///  * <https://material.google.com/components/buttons.html>
-class FlatButton extends StatelessWidget {
-  /// Creates a flat button.
+///  * [RawMaterialButton], the widget this widget is based on.
+///  * <https://material.io/design/components/buttons.html>
+class FlatButton extends MaterialButton {
+  /// Create a simple text button.
   ///
-  /// The [child] argument is required and is typically a [Text] widget in all
-  /// caps.
+  /// The [autofocus] and [clipBehavior] arguments must not be null.
   const FlatButton({
     Key key,
-    @required this.onPressed,
-    this.textColor,
-    this.disabledTextColor,
-    this.color,
-    this.highlightColor,
-    this.splashColor,
-    this.disabledColor,
-    this.textTheme,
-    this.colorBrightness,
-    @required this.child
-  }) : assert(child != null),
-       super(key: key);
+    @required VoidCallback onPressed,
+    ValueChanged<bool> onHighlightChanged,
+    ButtonTextTheme textTheme,
+    Color textColor,
+    Color disabledTextColor,
+    Color color,
+    Color disabledColor,
+    Color focusColor,
+    Color hoverColor,
+    Color highlightColor,
+    Color splashColor,
+    Brightness colorBrightness,
+    EdgeInsetsGeometry padding,
+    ShapeBorder shape,
+    Clip clipBehavior = Clip.none,
+    FocusNode focusNode,
+    bool autofocus = false,
+    MaterialTapTargetSize materialTapTargetSize,
+    @required Widget child,
+  }) : assert(clipBehavior != null),
+       assert(autofocus != null),
+       super(
+         key: key,
+         onPressed: onPressed,
+         onHighlightChanged: onHighlightChanged,
+         textTheme: textTheme,
+         textColor: textColor,
+         disabledTextColor: disabledTextColor,
+         color: color,
+         disabledColor: disabledColor,
+         focusColor: focusColor,
+         hoverColor: hoverColor,
+         highlightColor: highlightColor,
+         splashColor: splashColor,
+         colorBrightness: colorBrightness,
+         padding: padding,
+         shape: shape,
+         clipBehavior: clipBehavior,
+         focusNode: focusNode,
+         autofocus: autofocus,
+         materialTapTargetSize: materialTapTargetSize,
+         child: child,
+      );
 
-  /// The callback that is called when the button is tapped or otherwise
-  /// activated.
+  /// Create a text button from a pair of widgets that serve as the button's
+  /// [icon] and [label].
   ///
-  /// If this is set to null, the button will be disabled.
-  final VoidCallback onPressed;
-
-  /// The color to use for this button's text.
+  /// The icon and label are arranged in a row and padded by 12 logical pixels
+  /// at the start, and 16 at the end, with an 8 pixel gap in between.
   ///
-  /// Defaults to the color determined by the [textTheme].
-  final Color textColor;
-
-  /// The color to use for this button's text when the button cannot be pressed.
-  ///
-  /// Defaults to a color derived from the [Theme].
-  final Color disabledTextColor;
-
-  /// The primary color of the button, as printed on the [Material], while it
-  /// is in its default (unpressed, enabled) state.
-  ///
-  /// Defaults to null, meaning that the color is automatically derived from the
-  /// [Theme].
-  ///
-  /// Typically, a material design color will be used, as follows:
-  ///
-  /// ```dart
-  ///  new FlatButton(
-  ///    color: Colors.blue,
-  ///    onPressed: _handleTap,
-  ///    child: new Text('DEMO'),
-  ///  ),
-  /// ```
-  final Color color;
-
-  /// The primary color of the button when the button is in the down (pressed)
-  /// state.
-  ///
-  /// The splash is represented as a circular overlay that appears above the
-  /// [highlightColor] overlay. The splash overlay has a center point that
-  /// matches the hit point of the user touch event. The splash overlay will
-  /// expand to fill the button area if the touch is held for long enough time.
-  /// If the splash color has transparency then the highlight and button color
-  /// will show through.
-  ///
-  /// Defaults to the Theme's splash color, [ThemeData.splashColor].
-  final Color splashColor;
-
-  /// The secondary color of the button when the button is in the down (pressed)
-  /// state.
-  ///
-  /// The highlight color is represented as a solid color that is overlaid over
-  /// the button color (if any). If the highlight color has transparency, the
-  /// button color will show through. The highlight fades in quickly as the
-  /// button is held down.
-  ///
-  /// Defaults to the Theme's highlight color, [ThemeData.highlightColor].
-  final Color highlightColor;
-
-  /// The color of the button when the button is disabled.
-  ///
-  /// Buttons are disabled by default. To enable a button, set its [onPressed]
-  /// property to a non-null value.
-  final Color disabledColor;
-
-  /// The color scheme to use for this button's text.
-  ///
-  /// Defaults to the button color from [ButtonTheme].
-  final ButtonTextTheme textTheme;
-
-  /// The theme brightness to use for this button.
-  ///
-  /// Defaults to the brightness from [ThemeData.brightness].
-  final Brightness colorBrightness;
-
-  /// The widget below this widget in the tree.
-  ///
-  /// Typically a [Text] widget in all caps.
-  final Widget child;
-
-  /// Whether the button is enabled or disabled.
-  ///
-  /// Buttons are disabled by default. To enable a button, set its [onPressed]
-  /// property to a non-null value.
-  bool get enabled => onPressed != null;
+  /// The [icon], [label], and [clipBehavior] arguments must not be null.
+  factory FlatButton.icon({
+    Key key,
+    @required VoidCallback onPressed,
+    ValueChanged<bool> onHighlightChanged,
+    ButtonTextTheme textTheme,
+    Color textColor,
+    Color disabledTextColor,
+    Color color,
+    Color disabledColor,
+    Color focusColor,
+    Color hoverColor,
+    Color highlightColor,
+    Color splashColor,
+    Brightness colorBrightness,
+    EdgeInsetsGeometry padding,
+    ShapeBorder shape,
+    Clip clipBehavior,
+    FocusNode focusNode,
+    bool autofocus,
+    MaterialTapTargetSize materialTapTargetSize,
+    @required Widget icon,
+    @required Widget label,
+  }) = _FlatButtonWithIcon;
 
   @override
   Widget build(BuildContext context) {
-    return new MaterialButton(
+    final ThemeData theme = Theme.of(context);
+    final ButtonThemeData buttonTheme = ButtonTheme.of(context);
+    return RawMaterialButton(
       onPressed: onPressed,
-      textColor: enabled ? textColor : disabledTextColor,
-      color: enabled ? color : disabledColor,
-      highlightColor: highlightColor ?? Theme.of(context).highlightColor,
-      splashColor: splashColor ?? Theme.of(context).splashColor,
-      textTheme: textTheme,
-      colorBrightness: colorBrightness,
-      child: child
+      onHighlightChanged: onHighlightChanged,
+      fillColor: buttonTheme.getFillColor(this),
+      textStyle: theme.textTheme.button.copyWith(color: buttonTheme.getTextColor(this)),
+      focusColor: buttonTheme.getFocusColor(this),
+      hoverColor: buttonTheme.getHoverColor(this),
+      highlightColor: buttonTheme.getHighlightColor(this),
+      splashColor: buttonTheme.getSplashColor(this),
+      elevation: buttonTheme.getElevation(this),
+      focusElevation: buttonTheme.getFocusElevation(this),
+      hoverElevation: buttonTheme.getHoverElevation(this),
+      highlightElevation: buttonTheme.getHighlightElevation(this),
+      disabledElevation: buttonTheme.getDisabledElevation(this),
+      padding: buttonTheme.getPadding(this),
+      constraints: buttonTheme.getConstraints(this),
+      shape: buttonTheme.getShape(this),
+      clipBehavior: clipBehavior,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      materialTapTargetSize: buttonTheme.getMaterialTapTargetSize(this),
+      animationDuration: buttonTheme.getAnimationDuration(this),
+      child: child,
     );
   }
+}
+
+/// The type of of FlatButtons created with [FlatButton.icon].
+///
+/// This class only exists to give FlatButtons created with [FlatButton.icon]
+/// a distinct class for the sake of [ButtonTheme]. It can not be instantiated.
+class _FlatButtonWithIcon extends FlatButton with MaterialButtonWithIconMixin {
+  _FlatButtonWithIcon({
+    Key key,
+    @required VoidCallback onPressed,
+    ValueChanged<bool> onHighlightChanged,
+    ButtonTextTheme textTheme,
+    Color textColor,
+    Color disabledTextColor,
+    Color color,
+    Color disabledColor,
+    Color focusColor,
+    Color hoverColor,
+    Color highlightColor,
+    Color splashColor,
+    Brightness colorBrightness,
+    EdgeInsetsGeometry padding,
+    ShapeBorder shape,
+    Clip clipBehavior = Clip.none,
+    FocusNode focusNode,
+    bool autofocus = false,
+    MaterialTapTargetSize materialTapTargetSize,
+    @required Widget icon,
+    @required Widget label,
+  }) : assert(icon != null),
+       assert(label != null),
+       assert(clipBehavior != null),
+       assert(autofocus != null),
+       super(
+         key: key,
+         onPressed: onPressed,
+         onHighlightChanged: onHighlightChanged,
+         textTheme: textTheme,
+         textColor: textColor,
+         disabledTextColor: disabledTextColor,
+         color: color,
+         disabledColor: disabledColor,
+         focusColor: focusColor,
+         hoverColor: hoverColor,
+         highlightColor: highlightColor,
+         splashColor: splashColor,
+         colorBrightness: colorBrightness,
+         padding: padding,
+         shape: shape,
+         clipBehavior: clipBehavior,
+         focusNode: focusNode,
+         autofocus: autofocus,
+         materialTapTargetSize: materialTapTargetSize,
+         child: Row(
+           mainAxisSize: MainAxisSize.min,
+           children: <Widget>[
+             icon,
+             const SizedBox(width: 8.0),
+             label,
+           ],
+         ),
+       );
+
 }

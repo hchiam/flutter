@@ -4,12 +4,12 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
-import 'package:test/test.dart';
+import '../flutter_test_alternative.dart';
 import 'rendering_tester.dart';
 
 void main() {
   test('RenderAspectRatio: Intrinsic sizing 2.0', () {
-    final RenderAspectRatio box = new RenderAspectRatio(aspectRatio: 2.0);
+    final RenderAspectRatio box = RenderAspectRatio(aspectRatio: 2.0);
 
     expect(box.getMinIntrinsicWidth(200.0), 400.0);
     expect(box.getMinIntrinsicWidth(400.0), 800.0);
@@ -23,14 +23,14 @@ void main() {
     expect(box.getMaxIntrinsicHeight(200.0), 100.0);
     expect(box.getMaxIntrinsicHeight(400.0), 200.0);
 
-    expect(box.getMinIntrinsicWidth(double.INFINITY), 0.0);
-    expect(box.getMaxIntrinsicWidth(double.INFINITY), 0.0);
-    expect(box.getMinIntrinsicHeight(double.INFINITY), 0.0);
-    expect(box.getMaxIntrinsicHeight(double.INFINITY), 0.0);
+    expect(box.getMinIntrinsicWidth(double.infinity), 0.0);
+    expect(box.getMaxIntrinsicWidth(double.infinity), 0.0);
+    expect(box.getMinIntrinsicHeight(double.infinity), 0.0);
+    expect(box.getMaxIntrinsicHeight(double.infinity), 0.0);
   });
 
   test('RenderAspectRatio: Intrinsic sizing 0.5', () {
-    final RenderAspectRatio box = new RenderAspectRatio(aspectRatio: 0.5);
+    final RenderAspectRatio box = RenderAspectRatio(aspectRatio: 0.5);
 
     expect(box.getMinIntrinsicWidth(200.0), 100.0);
     expect(box.getMinIntrinsicWidth(400.0), 200.0);
@@ -44,16 +44,16 @@ void main() {
     expect(box.getMaxIntrinsicHeight(200.0), 400.0);
     expect(box.getMaxIntrinsicHeight(400.0), 800.0);
 
-    expect(box.getMinIntrinsicWidth(double.INFINITY), 0.0);
-    expect(box.getMaxIntrinsicWidth(double.INFINITY), 0.0);
-    expect(box.getMinIntrinsicHeight(double.INFINITY), 0.0);
-    expect(box.getMaxIntrinsicHeight(double.INFINITY), 0.0);
+    expect(box.getMinIntrinsicWidth(double.infinity), 0.0);
+    expect(box.getMaxIntrinsicWidth(double.infinity), 0.0);
+    expect(box.getMinIntrinsicHeight(double.infinity), 0.0);
+    expect(box.getMaxIntrinsicHeight(double.infinity), 0.0);
   });
 
   test('RenderAspectRatio: Intrinsic sizing 2.0', () {
-    final RenderAspectRatio box = new RenderAspectRatio(
+    final RenderAspectRatio box = RenderAspectRatio(
       aspectRatio: 2.0,
-      child: new RenderSizedBox(const Size(90.0, 70.0))
+      child: RenderSizedBox(const Size(90.0, 70.0)),
     );
 
     expect(box.getMinIntrinsicWidth(200.0), 400.0);
@@ -68,16 +68,16 @@ void main() {
     expect(box.getMaxIntrinsicHeight(200.0), 100.0);
     expect(box.getMaxIntrinsicHeight(400.0), 200.0);
 
-    expect(box.getMinIntrinsicWidth(double.INFINITY), 90.0);
-    expect(box.getMaxIntrinsicWidth(double.INFINITY), 90.0);
-    expect(box.getMinIntrinsicHeight(double.INFINITY), 70.0);
-    expect(box.getMaxIntrinsicHeight(double.INFINITY), 70.0);
+    expect(box.getMinIntrinsicWidth(double.infinity), 90.0);
+    expect(box.getMaxIntrinsicWidth(double.infinity), 90.0);
+    expect(box.getMinIntrinsicHeight(double.infinity), 70.0);
+    expect(box.getMaxIntrinsicHeight(double.infinity), 70.0);
   });
 
   test('RenderAspectRatio: Intrinsic sizing 0.5', () {
-    final RenderAspectRatio box = new RenderAspectRatio(
+    final RenderAspectRatio box = RenderAspectRatio(
       aspectRatio: 0.5,
-      child: new RenderSizedBox(const Size(90.0, 70.0))
+      child: RenderSizedBox(const Size(90.0, 70.0)),
     );
 
     expect(box.getMinIntrinsicWidth(200.0), 100.0);
@@ -92,37 +92,38 @@ void main() {
     expect(box.getMaxIntrinsicHeight(200.0), 400.0);
     expect(box.getMaxIntrinsicHeight(400.0), 800.0);
 
-    expect(box.getMinIntrinsicWidth(double.INFINITY), 90.0);
-    expect(box.getMaxIntrinsicWidth(double.INFINITY), 90.0);
-    expect(box.getMinIntrinsicHeight(double.INFINITY), 70.0);
-    expect(box.getMaxIntrinsicHeight(double.INFINITY), 70.0);
+    expect(box.getMinIntrinsicWidth(double.infinity), 90.0);
+    expect(box.getMaxIntrinsicWidth(double.infinity), 90.0);
+    expect(box.getMinIntrinsicHeight(double.infinity), 70.0);
+    expect(box.getMaxIntrinsicHeight(double.infinity), 70.0);
   });
 
   test('RenderAspectRatio: Unbounded', () {
-    bool hadError = false;
-    final FlutterExceptionHandler oldHandler = FlutterError.onError;
-    FlutterError.onError = (FlutterErrorDetails details) {
-      hadError = true;
-    };
-    final RenderBox box = new RenderConstrainedOverflowBox(
-      maxWidth: double.INFINITY,
-      maxHeight: double.INFINITY,
-      child: new RenderAspectRatio(
+    final RenderBox box = RenderConstrainedOverflowBox(
+      maxWidth: double.infinity,
+      maxHeight: double.infinity,
+      child: RenderAspectRatio(
         aspectRatio: 0.5,
-        child: new RenderSizedBox(const Size(90.0, 70.0))
+        child: RenderSizedBox(const Size(90.0, 70.0)),
       ),
     );
-    expect(hadError, false);
-    layout(box);
-    expect(hadError, true);
-    FlutterError.onError = oldHandler;
+
+    final List<String> errorMessages = <String>[];
+    layout(box, onErrors: () {
+      errorMessages.addAll(
+        renderer.takeAllFlutterErrorDetails().map((FlutterErrorDetails details) => '${details.exceptionAsString()}'),
+      );
+    });
+    expect(errorMessages, hasLength(2));
+    expect(errorMessages[0], contains('RenderAspectRatio has unbounded constraints.'));
+    // The second error message is a generic message generated by the Dart VM. Not worth testing.
   });
 
   test('RenderAspectRatio: Sizing', () {
     RenderConstrainedOverflowBox outside;
     RenderAspectRatio inside;
-    layout(outside = new RenderConstrainedOverflowBox(
-      child: inside = new RenderAspectRatio(aspectRatio: 1.0),
+    layout(outside = RenderConstrainedOverflowBox(
+      child: inside = RenderAspectRatio(aspectRatio: 1.0),
     ));
     pumpFrame();
     expect(inside.size, const Size(800.0, 600.0));
@@ -139,13 +140,13 @@ void main() {
     pumpFrame();
     expect(inside.size, const Size(90.0, 90.0));
 
-    outside.maxWidth = double.INFINITY;
+    outside.maxWidth = double.infinity;
     outside.maxHeight = 90.0;
     pumpFrame();
     expect(inside.size, const Size(90.0, 90.0));
 
     outside.maxWidth = 90.0;
-    outside.maxHeight = double.INFINITY;
+    outside.maxHeight = double.infinity;
     pumpFrame();
     expect(inside.size, const Size(90.0, 90.0));
 
@@ -161,13 +162,13 @@ void main() {
     pumpFrame();
     expect(inside.size, const Size(90.0, 45.0));
 
-    outside.maxWidth = double.INFINITY;
+    outside.maxWidth = double.infinity;
     outside.maxHeight = 90.0;
     pumpFrame();
     expect(inside.size, const Size(180.0, 90.0));
 
     outside.maxWidth = 90.0;
-    outside.maxHeight = double.INFINITY;
+    outside.maxHeight = double.infinity;
     pumpFrame();
     expect(inside.size, const Size(90.0, 45.0));
 
@@ -184,13 +185,13 @@ void main() {
     pumpFrame();
     expect(inside.size, const Size(90.0, 80.0));
 
-    outside.maxWidth = double.INFINITY;
+    outside.maxWidth = double.infinity;
     outside.maxHeight = 90.0;
     pumpFrame();
     expect(inside.size, const Size(180.0, 90.0));
 
     outside.maxWidth = 90.0;
-    outside.maxHeight = double.INFINITY;
+    outside.maxHeight = double.infinity;
     pumpFrame();
     expect(inside.size, const Size(90.0, 80.0));
   });
